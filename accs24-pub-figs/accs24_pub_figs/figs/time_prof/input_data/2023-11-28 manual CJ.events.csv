@@ -1,0 +1,49 @@
+stop,start,timestamp,desc
+,,,2023-11-28 CJ manual passaging; CPL: Manual crazyplate passaging 2023-11-02
+,setup_labware,1701206412281,Loading worktop: first labware touch (START)
+,,1701206474504,Loading worktop: last item down
+setup_labware,annotation,1701206491313,Transit: Touch incubator to open
+,,1701206519355,Annotation: Plate touches microscope
+,,1701207057778,Annotation: Plate leaves microscope
+,,1701207115144,keeping plate out
+annotation,setup_reagents,1701207128219,started pouring reagents
+,,1701207177601,starting media removal
+setup_reagents,wash,1701207191754,starting media removal
+,,1701207213825,media removal last tip eject
+,,1701207263277,media removal last tip eject
+,,1701207268601,pbs wash first tip pickup
+,,1701207271979,pbs wash first tip pickup
+,,1701207369307,pbs last ejct
+wash,trypsinize,1701207384935,trypsinize start
+,,1701207419591,trypsinize last eject
+,,1701207456201,trypsinize last eject
+,,1701207471613,taking pic
+,,1701207499253,Transit: Incubator shut
+trypsinize,arraying,1701207515846,Arraying: First box or pipette touch
+arraying,quench,1701207809845,Arraying: Final box or pipette touch
+,,1701207823769,Transit: Touch incubator to open
+,,1701207842862,Quench: Plate touches worktop
+,,1701207853059,filling media trough
+,,1701207881455,Quench: Pipette touches 1st tips
+,,1701207978113,Quench: Last tips ejected
+,,1701208007845,Quench: Last tips ejected
+quench,arraying,1701208012651,resuming arraying
+,,1701208040161,arraying last touch
+,,1701208405099,arraying last touch
+,,1701208414111,arraying last touch
+,,1701208452402,disregard
+arraying,pause,1701208455661,pause to get boxes
+pause,arraying,1701208484855,continue arraying
+,,1701208491581,arraying last touch again
+arraying,pause,1701208834066,pause looking for empty box
+pause,arraying,1701208852372,unpause
+,,1701209049091,arraying last touch again
+arraying,seeding,1701209068021,Transfer: Pipette touches 1st tips
+,,1701209815394,Transfer: Last tips ejected
+seeding,inspection,1701209837627,Transfer: Lid on and departing
+,,1701209857326,Inspection: Plate touches microscope
+inspection,cleanup_plate,1701209875080,Inspection: Plate leaves microscope
+,,1701209895355,Transfer: Incubator shut
+cleanup_plate,cleanup_bsc,1701209910160,Cleanup: First touch
+,,1701209969805,note: insp did not check all wells
+cleanup_bsc,,1701210064915,Cleanup: BSC shut & lamp on (FINISH)

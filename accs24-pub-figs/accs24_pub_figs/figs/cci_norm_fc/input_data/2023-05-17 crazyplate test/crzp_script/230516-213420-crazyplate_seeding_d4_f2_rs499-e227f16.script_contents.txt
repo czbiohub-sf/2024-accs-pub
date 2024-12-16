@@ -1,0 +1,2488 @@
+TEXT_ENCODING='utf-8'
+SOURCE_HASH='f5ae92e4e505c4cdc915485f1fa40675948fa6a0'
+CONFIG_HASH='42a5d18c9780fee849bf5bba785dc0a2cce6020f'
+
+import asyncio
+import cProfile
+from collections import OrderedDict
+from dataclasses import dataclass
+import datetime
+from enum import Enum
+import hashlib
+import inspect
+import io
+import itertools
+import logging
+import numpy as np
+from opentrons import protocol_api
+import opentrons
+from pathlib import Path
+import time
+import traceback
+from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Tuple, Union
+
+
+##########
+
+
+def run(ot_ctx: protocol_api.ProtocolContext):
+    for name in 'ps_class', 'ps_run', 'run_config':
+        if name not in globals():
+            raise RuntimeError(f"{name} definition missing from protocol file")
+    global ps_class
+    global ps_run
+    global run_config
+
+    p = ps_class(ot_ctx=ot_ctx, run_config=run_config)
+    p.send_protocol_start_msg()
+
+    try:
+        if (
+                p.get_run_param('logging', 'use_profiler', default=True)
+                and not p.is_simulating()):
+            p.log_debug("Running protocol in profiler")
+            dump_path = p.get_log_path("pstat.dmp")
+            if dump_path is not None:
+                p.log_debug(f"Writing profiler data to: {str(dump_path)!r}")
+            cProfile.runctx(
+                "ps_run(p)",
+                globals(),
+                locals(),
+                filename=p.get_log_path("pstat.dmp"))
+        else:
+            ps_run(p)
+
+        p.send_protocol_end_msg()
+    except Exception as e:
+        if e.__class__.__name__ in (
+                'SmoothieAlarm', 'CancelledError', 'ExecutionCancelledError'):
+            # Note: Matching by name so we fail gracefully if OT's
+            # implementation changes
+            p.log_notice("Protocol aborting due to manual cancel or "
+                         "motion controller alarm")
+            p.log_debug(f"Exception was: {e!r}")
+        else:
+            p.logger.exception(e)
+            exc_desc = traceback.format_exc()
+            p.log_error("Protocol aborting due to fatal error")
+            p.log_debug(f"Traceback follows:\n{exc_desc}")
+        raise
+
+
+def get_logger(context: Union['ProtocolSteps', protocol_api.ProtocolContext],
+               output_path: Optional[str] = None):
+    if context.is_simulating():
+        class SystemJournalHandler(logging.StreamHandler):
+            def __init__(self):
+                if globals().get('SIM_QUIET'):
+                    stream = io.StringIO()
+                else:
+                    stream = globals().get('SIM_LOG_STREAM')
+                super().__init__(stream)
+
+            def format(self, record: logging.LogRecord):
+                pri_word = getattr(record, 'pri_word', record.levelname)
+                return f"{pri_word + ':':8s} {record.msg}"
+    else:
+        # This is in a conditional block since we don't want or need the
+        # systemd stuff while simulating
+        import systemd.journal
+
+        class SystemJournalHandler(logging.Handler):
+            def emit(self, record):
+                priority = record.__dict__.get(
+                    'systemd_priority', systemd.journal.LOG_INFO)
+                systemd.journal.send(
+                    self.format(record),
+                    PRIORITY=priority,
+                    LOGGER="opentrons.user_protocol")
+
+    class ProtocolJournalLoggerAdapter:
+        def __init__(self, logger: logging.Logger):
+            self._logger = logger
+
+        def _log_with_systemd_priority(
+                self, fn_name: str, pri_word: str, systemd_pri_name: str,
+                msg: str, *args, **kwargs):
+            if 'extra' not in kwargs:
+                kwargs['extra'] = {}
+            kwargs['extra']['pri_word'] = pri_word
+            if not context.is_simulating():
+                kwargs['extra']['systemd_priority'] = \
+                    getattr(systemd.journal, systemd_pri_name)
+            getattr(self._logger, fn_name)(msg, *args, **kwargs)
+
+        def exception(self, msg: str, *args, **kwargs):
+            self._log_with_systemd_priority(
+                'exception', 'EXCEPTION', 'LOG_ERR', msg, *args, **kwargs)
+
+        def error(self, msg: str, *args, **kwargs):
+            self._log_with_systemd_priority(
+                'error', 'ERROR', 'LOG_ERR', msg, *args, **kwargs)
+
+        def warning(self, msg: str, *args, **kwargs):
+            self._log_with_systemd_priority(
+                'warning', 'WARNING', 'LOG_WARNING', msg, *args, **kwargs)
+
+        def notice(self, msg: str, *args, **kwargs):
+            self._log_with_systemd_priority(
+                'warning', 'NOTICE', 'LOG_NOTICE', msg, *args, **kwargs)
+
+        def info(self, msg: str, *args, **kwargs):
+            self._log_with_systemd_priority(
+                'info', 'INFO', 'LOG_INFO', msg, *args, **kwargs)
+
+        def debug(self, msg: str, *args, **kwargs):
+            self._log_with_systemd_priority(
+                'debug', 'DEBUG', 'LOG_DEBUG', msg, *args, **kwargs)
+
+        def __getattr__(self, name):
+            return getattr(self._logger, name)
+
+    class ProtocolJournalFormatter(logging.Formatter):
+        def format(self, record: logging.LogRecord):
+            pri_word = getattr(record, 'pri_word', record.levelname)
+            ts_desc = datetime.datetime.fromtimestamp(record.created)\
+                .isoformat(sep=" ", timespec='milliseconds')
+            return f"{ts_desc} {pri_word + ':':8s} {record.msg}"
+
+    logger = ProtocolJournalLoggerAdapter(logging.getLogger(__name__))
+    logger.handlers.clear()
+    logger.setLevel(logging.DEBUG)
+    logger.addHandler(SystemJournalHandler())
+    if output_path is not None:
+        path_obj = Path(output_path).resolve()
+        path_obj.parent.mkdir(parents=True, exist_ok=True)
+        handler = logging.FileHandler(path_obj)
+        handler.setFormatter(ProtocolJournalFormatter())
+        logger.addHandler(handler)
+    return logger
+
+
+class RunConfigError(ValueError):
+    pass
+
+
+class TiprackProxy:
+    # NOTE: We don't actually do anything with this at the moment
+    def __init__(self, tip_rack: protocol_api.labware.Labware,
+                 context: 'ProtocolSteps'):
+        self._tip_rack = tip_rack
+        self._context = context
+
+    def __getattr__(self, name):
+        attr = getattr(self._tip_rack, name)
+        if callable(attr) and attr.__self__ is not None:
+            fn = getattr(self._tip_rack.__class__, name)
+            meth = fn.__get__(self, self.__class__)
+            return meth
+        return attr
+
+    def __setattr__(self, name, value):
+        if name in ('_tip_rack', '_context'):
+            super().__setattr__(name, value)
+        else:
+            setattr(self._tip_rack, name, value)
+
+
+class InstrumentProxy:
+    def __init__(self, instrument, context):
+        self._instrument = instrument
+        self._context = context
+        self._last_location = None
+
+    def deref_tiprack(self, slot_no: int):
+        self.tip_racks[:] = [
+            x for x in self.tip_racks if int(x.parent) != slot_no]
+
+    def get_next_tip(self,
+            slot_nos: Optional[Iterable[int]] = None
+        ) -> Optional[opentrons.protocol_api.labware.Well]:
+        next_tip = None
+        for tip_rack in self.tip_racks:
+            slot_no = int(tip_rack.parent)
+            if slot_nos is not None and slot_no not in slot_nos:
+                continue
+            next_tip = tip_rack.next_tip()
+            if next_tip is not None:
+                break
+
+        return next_tip
+
+    def pick_up_tip(
+        self,
+        location: Optional[Union[opentrons.types.Location,
+                                 protocol_api.labware.Well]] = None,
+        *args,
+        **kwargs
+            ):
+        if location is None:
+            location = self.get_next_tip()
+
+        if location is not None:
+            self._context._before_pick_up_tip(self, location)
+
+        self._instrument.pick_up_tip(location, *args, **kwargs)
+        return self
+
+    pick_up_tips = pick_up_tip
+
+    def drop_tip(
+        self,
+        location: Optional[Union[opentrons.types.Location,
+                                 protocol_api.labware.Well]] = None,
+        *args,
+        **kwargs
+            ):
+        if location is None:
+            location = self._context.get_next_trash(self)
+        self._context._before_drop_tip(self)
+        self._instrument.drop_tip(location, *args, **kwargs)
+        return self
+
+    drop_tips = drop_tip
+
+    def return_tip(self, *args, **kwargs):
+        self._context._before_drop_tip(self)
+        self._instrument.return_tip(*args, **kwargs)
+        return self
+
+    return_tips = return_tip
+
+    def move_to(self, location: opentrons.types.Location, **kwargs):
+        self._instrument.move_to(location, **kwargs)
+        self._last_location = location
+
+    def aspirate(
+        self,
+        volume: Optional[float] = None,
+        location: Optional[Union[opentrons.types.Location,
+                                 protocol_api.labware.Well]] = None,
+        rate: float = 1.0,
+        in_air: bool = False,
+            ):
+        start_vol = self._instrument.current_volume
+        self._instrument.aspirate(volume=volume, location=location, rate=rate)
+        aspirated_vol = self._instrument.current_volume - start_vol
+        if location is not None:
+            self._last_location = location
+        if not in_air:
+            # TODO: Is this the most appropriate way to handle this?
+            self._context._after_aspirate(
+                pipette=self,
+                volume=aspirated_vol,
+                location=self._last_location)
+        return self
+
+    def dispense(
+        self,
+        volume: Optional[float] = None,
+        location: Optional[Union[opentrons.types.Location,
+                                 protocol_api.labware.Well]] = None,
+        rate: float = 1.0,
+        in_air: bool = False
+            ):
+        start_vol = self._instrument.current_volume
+        self._instrument.dispense(volume=volume, location=location, rate=rate)
+        dispensed_vol = start_vol - self._instrument.current_volume
+        if location is not None:
+            self._last_location = location
+        self._context._after_dispense(
+            pipette=self,
+            volume=dispensed_vol,
+            location=self._last_location)
+        return self
+
+    def blow_out(
+        self,
+        location: Optional[Union[opentrons.types.Location,
+                                 protocol_api.labware.Well]] = None
+            ):
+        start_vol = self._instrument.current_volume
+        self._instrument.blow_out(location)
+        if location is not None:
+            self._last_location = location
+        self._context._after_dispense(
+            pipette=self,
+            volume=start_vol,
+            location=self._last_location)
+        return self
+
+    def __getattr__(self, name):
+        attr = getattr(self._instrument, name)
+        if callable(attr) and attr.__self__ is not None:
+            fn = getattr(self._instrument.__class__, name)
+            meth = fn.__get__(self, self.__class__)
+            return meth
+        return attr
+
+    def __setattr__(self, name, value):
+        if name in ('_instrument', '_context', '_last_location'):
+            super().__setattr__(name, value)
+        else:
+            setattr(self._instrument, name, value)
+
+
+PipetteRef = Union[InstrumentProxy, str]
+
+
+@dataclass
+class TiprackResetGroup:
+    slot_nos: Tuple[int, ...]
+    warning_done: bool = False
+
+
+class ProtocolSteps:
+    PIPETTE_TYPE_RIGHT: Optional[str] = None
+    PIPETTE_TYPE_LEFT: Optional[str] = None
+
+    PIPETTE_ALIAS_LEFT = 'left'
+    PIPETTE_ALIAS_RIGHT = 'right'
+
+    NoDefault = object()
+
+    def __init__(self, ot_ctx: protocol_api.ProtocolContext, run_config: dict):
+        self._set_ot_ctx(ot_ctx)
+        self.run_config = run_config
+        self.pipette_left = None
+        self.pipette_right = None
+        pipette_type_left = self.get_run_param(
+            'equipment', f'pipette_type_{self.PIPETTE_ALIAS_LEFT}',
+            default=self.PIPETTE_TYPE_LEFT)
+        pipette_type_right = self.get_run_param(
+            'equipment', f'pipette_type_{self.PIPETTE_ALIAS_RIGHT}',
+            default=self.PIPETTE_TYPE_RIGHT)
+        if pipette_type_left is not None:
+            self.pipette_left = InstrumentProxy(
+                ot_ctx.load_instrument(pipette_type_left, 'left'), self)
+            if self.PIPETTE_ALIAS_LEFT != 'left':
+                setattr(self, f'pipette_{self.PIPETTE_ALIAS_LEFT}',
+                        self.pipette_left)
+        if pipette_type_right is not None:
+            self.pipette_right = InstrumentProxy(
+                ot_ctx.load_instrument(pipette_type_right, 'right'), self)
+            if self.PIPETTE_ALIAS_RIGHT != 'right':
+                setattr(self, f'pipette_{self.PIPETTE_ALIAS_RIGHT}',
+                        self.pipette_right)
+
+        self._init_logging()
+
+        self.tipracks: Dict[int, TiprackProxy] = OrderedDict()
+        self.labware: Dict[int, protocol_api.labware.Labware] = {}
+        self.modules: Dict[int, protocol_api.context.ModuleContext] = {}
+        self._tiprack_reset_queues: Dict[str, List[TiprackResetGroup]] = {
+            self.PIPETTE_ALIAS_LEFT: [],
+            self.PIPETTE_ALIAS_RIGHT: []
+        }
+        self._pipette_alias_picking_up_tips: Optional[PipetteRef] = None
+        self._init_trash_locations()
+
+    def _set_ot_ctx(self, ot_ctx: protocol_api.ProtocolContext):
+        self.ot_ctx = ot_ctx
+        self.is_simulating = ot_ctx.is_simulating
+        self.delay = ot_ctx.delay
+
+    def _init_log_dir(self):
+        self.log_dir = (
+            globals().get('SIM_LOG_DIR',
+                          self.get_run_param('logging',
+                                             'log_dir', default=None))
+            if globals().get('SIM_WRITE_LOGFILE') or not self.is_simulating()
+            else None)
+
+    def _init_run_id(self):
+        run_id = self.get_run_param('logging', 'run_id', default=None)
+        run_id = run_id if run_id is not None else "norunid"
+        self.run_id = run_id
+        date_desc = datetime.datetime.now().strftime("%y%m%d-%H%M%S")
+        expanded_run_id = f"{date_desc}-{run_id}"
+        script_contents_hash = globals().get('SCRIPT_CONTENTS_HASH')
+        if script_contents_hash:
+            expanded_run_id += "-" + script_contents_hash[:7]
+        self.expanded_run_id = expanded_run_id
+
+    def get_log_path(self, ending: str):
+        return (
+            Path(self.log_dir).joinpath(
+                f"{self.expanded_run_id}.{ending}")
+            if self.log_dir is not None
+            else None)
+
+    def _init_logging(self):
+        run_info_key_desc = {
+            'SOURCE_HASH': "source hash",
+            'CONFIG_HASH': "config hash",
+            'SCRIPT_CONTENTS_HASH': "script hash",
+            }
+        pipette_info_key_desc = {
+            'pipette_id': "serial number"
+        }
+
+        self._init_log_dir()
+        self._init_run_id()
+
+        log_path = self.get_log_path("run_log.txt")
+        contents_path = self.get_log_path("script_contents.txt")
+        script_contents = globals().get('SCRIPT_CONTENTS')
+
+        self.logger = get_logger(self.ot_ctx, output_path=log_path)
+        self.log_debug = self.logger.debug
+        self.log_info = self.logger.info
+        self.log_notice = self.logger.notice
+        self.log_warning = self.logger.warning
+        self.log_error = self.logger.error
+        self.log_debug("(start of logging session)")
+        if log_path is not None:
+            self.log_debug(f"Writing log hardcopy to path: {str(log_path)!r}")
+
+        if (contents_path is not None) and script_contents:
+            self.log_debug(
+                f"Copying script contents to path: {str(contents_path)!r}")
+            with contents_path.open("w", encoding=TEXT_ENCODING) as outf:
+                outf.write(script_contents)
+
+        run_info_items = [('run ID', self.expanded_run_id)]
+        run_info_items += [(k, globals().get(k))
+                           for k in ("SOURCE_HASH", "CONFIG_HASH",
+                                     "SCRIPT_CONTENTS_HASH")]
+        run_info_items += [(repr(k), v) for (k, v) in
+                           self.get_run_param('logging', 'run_info').items()]
+        for (k, v) in run_info_items:
+            self.log_info(
+                f"Run info: {run_info_key_desc.get(k, k)}: "
+                + (repr(v) if v is not None else '(missing)'))
+        try:
+            with Path("/var/serial").open() as f:
+                robot_id = f.read().strip()
+        except IOError:
+            robot_id = None
+        if robot_id:
+            self.log_info(f"Robot info: name: {robot_id}")
+        for pipette in (self.pipette_left, self.pipette_right):
+            if pipette is None:
+                continue
+            pipette_alias = self._get_pipette_alias(pipette)
+            for key in ('model', 'pipette_id'):
+                if key not in pipette.hw_pipette:
+                    continue
+                self.log_info(
+                    f"Pipette info ({pipette_alias}): "
+                    f"{pipette_info_key_desc.get(key, key)}: "
+                    f"{pipette.hw_pipette[key]!r}")
+
+    def _init_trash_locations(self):
+        trash_well = self.ot_ctx.fixed_trash.wells()[0]
+        trash_center = trash_well.center().point
+        right_locs = [
+            opentrons.types.Location(
+                trash_center + opentrons.types.Point(x, 0., 0.), trash_well)
+            for x in np.linspace(-50., 65., 24)
+            ]
+        left_locs = [
+            opentrons.types.Location(
+                trash_center + opentrons.types.Point(x, 0., 0.), trash_well)
+            for x in np.linspace(-40., 30., 15)
+            ]
+        self.trash_locations = {
+            self.PIPETTE_ALIAS_LEFT: left_locs,
+            self.PIPETTE_ALIAS_RIGHT: right_locs
+            }
+        self.trash_cycles = {
+            k: itertools.cycle(v) for (k, v) in self.trash_locations.items()}
+
+    def _emit_sim_event(self, event_name: str, args: Iterable):
+        if not globals().get('SIM_EMIT_TRACKING_EVENTS', False):
+            return
+        args_str = ",".join(repr(x) for x in args) if args else None
+        self.ot_ctx.comment(f"!{event_name}({args_str})")
+
+    def _sim_prefill_labware(self, slot_no: int, name: str):
+        initial_fills = self.get_run_param(
+            'liquid_tracking', 'initial_fills', name, default=())
+        for (well_name, liquid_name, vol) in initial_fills:
+            self.sim_add_liquid(slot_no, (well_name,), liquid_name, vol)
+
+    def _filter_tiprack_slot_nos(
+            self, pipette: PipetteRef, slot_nos: Iterable[int]) \
+            -> Iterable[int]:
+        pipette = self.match_pipette_ref(pipette)[1]
+        relevant = tuple(int(rack.parent) for rack in pipette.tip_racks)
+        return (x for x in slot_nos if x in relevant)
+
+    def _get_pipette_alias(self, ref: PipetteRef):
+        if isinstance(ref, str):
+            return ref
+        elif ref is self.pipette_left:
+            return self.PIPETTE_ALIAS_LEFT
+        elif ref is self.pipette_right:
+            return self.PIPETTE_ALIAS_RIGHT
+
+    def _resolve_pipette_alias(self, alias: str) -> InstrumentProxy:
+        valid_options = []
+        pipette = False
+        for o in [self] + list(self.__class__.__mro__):
+            if not hasattr(o, "PIPETTE_ALIAS_LEFT") \
+                    or not hasattr(o, "PIPETTE_ALIAS_RIGHT"):
+                break
+            d = {
+                o.PIPETTE_ALIAS_LEFT: self.pipette_left,
+                o.PIPETTE_ALIAS_RIGHT: self.pipette_right
+            }
+            valid_options += list(k for k in d.keys()
+                                  if k not in valid_options)
+            try:
+                pipette = d[alias]
+                break
+            except KeyError:
+                continue
+        if pipette is False:
+            raise KeyError(
+                f"Invalid pipette alias {alias!r} (valid options: "
+                + ", ".join(repr(k) for k in d.keys())
+                + ")")
+        elif pipette is None:
+            raise KeyError(f"No pipette configured for alias {alias!r}")
+        return pipette
+
+    def _assert_tiprack_present(self, slot_no: int):
+        if slot_no not in self.tipracks:
+            raise KeyError(f"No tiprack on slot {slot_no}")
+
+    def _assert_labware_present(self, slot_no: int):
+        if slot_no not in self.labware:
+            raise KeyError(f"No labware on slot {slot_no}")
+
+    def _resolve_well_location(
+        self,
+        slot_no: Optional[int] = None,
+        labware: Optional[protocol_api.labware.Labware] = None,
+        well_name: Optional[str] = None
+            ):
+        if slot_no is not None or labware is not None:
+            if well_name is None:
+                raise ValueError(
+                    "well_name is required with slot_no or labware")
+        elif well_name is not None:
+            raise ValueError("slot_no or labware required with well_name")
+        else:
+            return None
+        if labware is None:
+            self._assert_labware_present(slot_no)
+            labware = self.labware[slot_no]
+        return labware.well(well_name)
+
+    def _location_to_slot_and_well_name(
+        self,
+        location: Optional[Union[opentrons.types.Location,
+                           protocol_api.labware.Well]]
+            ) -> Tuple[Optional[int], Optional[str]]:
+        if location is None:
+            return None, None
+        if isinstance(location, opentrons.types.Location):
+            labware, well = location.labware.get_parent_labware_and_well()
+        elif isinstance(location, protocol_api.labware.Well):
+            well = location
+            labware = well.parent
+        else:
+            raise TypeError(f"Unsupported type for location: {type(location)}")
+        slot_no = self.get_slot_no(labware)
+        well_name = well.well_name
+        return slot_no, well_name
+
+    def _before_pick_up_or_drop_tip(self, pipette: PipetteRef):
+        pipette_alias, pipette = self.match_pipette_ref(pipette)
+        self._pipette_alias_picking_up_tips = pipette_alias
+        reset_queue = self._tiprack_reset_queues[pipette_alias]
+        if reset_queue:
+            slot_nos = reset_queue[0].slot_nos
+            if not reset_queue[0].warning_done \
+                    and not pipette.get_next_tip(slot_nos):
+                self.send_tiprack_reset_alert(slot_nos)
+                reset_queue[0].warning_done = True
+            if not pipette.get_next_tip():
+                self.reset_tipracks(slot_nos)
+                reset_queue.pop(0)
+
+    def _before_pick_up_tip(
+            self,
+            pipette: PipetteRef,
+            location: Union[opentrons.types.Location,
+                            protocol_api.labware.Well]
+            ):
+        pipette_alias, pipette = self.match_pipette_ref(pipette)
+        self._before_pick_up_or_drop_tip(pipette)
+        if location is None:
+            location = pipette.get_next_tip()
+        slot_no, start_well_name = \
+            self._location_to_slot_and_well_name(location)
+        self._emit_sim_event(
+            "PICKUP_TIPS",
+            (pipette_alias, slot_no, start_well_name, pipette.channels))
+
+    def _before_drop_tip(self, pipette: PipetteRef):
+        pipette_alias, pipette = self.match_pipette_ref(pipette)
+        self._before_pick_up_or_drop_tip(pipette)
+        self._emit_sim_event("DROP_TIPS", (pipette_alias,))
+
+    def _after_aspirate(
+        self,
+        pipette: PipetteRef,
+        volume: float,
+        location: Optional[Union[opentrons.types.Location,
+                           protocol_api.labware.Well]]
+            ):
+        pipette_alias, pipette = self.match_pipette_ref(pipette)
+        slot_no, well_name = self._location_to_slot_and_well_name(location)
+        self._emit_sim_event(
+            "ASPIRATE",
+            (pipette_alias, volume, slot_no, well_name, pipette.channels))
+
+    def _after_dispense(
+        self,
+        pipette: PipetteRef,
+        volume: float,
+        location: Optional[Union[opentrons.types.Location,
+                           protocol_api.labware.Well]]
+            ):
+        pipette_alias, pipette = self.match_pipette_ref(pipette)
+        slot_no, well_name = self._location_to_slot_and_well_name(location)
+        self._emit_sim_event(
+            "DISPENSE",
+            (pipette_alias, volume, slot_no, well_name, pipette.channels))
+
+    def _aspirate_or_dispense(
+        self,
+        meth_name: str,
+        pipette: PipetteRef,
+        vol: Optional[float] = None,
+        location: Optional[Union[opentrons.types.Location,
+                           protocol_api.labware.Well]] = None,
+        rate: float = 1.0,
+        slot_no: Optional[int] = None,
+        labware: Optional[protocol_api.labware.Labware] = None,
+        well_name: Optional[str] = None,
+        in_air: bool = False,
+        flow_rate: Optional[float] = None
+            ):
+        if location is None:
+            location = self._resolve_well_location(
+                slot_no=slot_no, labware=labware, well_name=well_name)
+        pipette = self.match_pipette_ref(pipette)[1]
+        if flow_rate is not None:
+            old_flow_rate = getattr(pipette.flow_rate, meth_name)
+            setattr(pipette.flow_rate, meth_name, flow_rate)
+        getattr(pipette, meth_name)(vol, location, rate, in_air=in_air)
+        if flow_rate is not None:
+            setattr(pipette.flow_rate, meth_name, old_flow_rate)
+        return pipette
+
+    def send_protocol_start_msg(self):
+        global metadata
+        protocol_name = metadata.get('protocolName')
+        name_part = f": {protocol_name}" if protocol_name else ""
+        self.log_notice(f"Protocol starting{name_part} "
+                        f"({self.expanded_run_id})")
+
+    def send_protocol_end_msg(self):
+        self.log_notice("Protocol complete.")
+
+    def get_run_param(self, *keys: str, default: Any = NoDefault):
+        ref = self.run_config
+        for key in keys:
+            if key not in ref:
+                if default is not ProtocolSteps.NoDefault:
+                    return default
+                desc = "run_config" + "".join(f"['{x}']" for x in keys)
+                raise RunConfigError(
+                    f"Missing required config parameter: {desc}")
+            ref = ref[key]
+        return ref
+
+    def comment(self, msg: str, also_log: bool = False):
+        self.ot_ctx.comment(msg)
+        if also_log:
+            self.log_info(msg)
+
+    def pause_with_message(self, msg: str):
+        self.log_notice(f"Protocol paused: {msg}")
+        self.ot_ctx.pause(msg)
+        self.delay(0.1)  # Trigger wait for run flag
+        self.log_notice("Protocol resumed.")
+
+    def send_tiprack_reset_alert(self, slot_nos: Iterable[int]):
+        slot_nos = tuple(slot_nos)
+        s_or_not = "s" if len(slot_nos) > 1 else ""
+        self.log_notice(
+            f"Replace tiprack{s_or_not} on slot{s_or_not} "
+            + ", ".join(str(x) for x in sorted(slot_nos)))
+
+    def match_pipette_ref(self, ref: PipetteRef) \
+            -> Tuple[str, InstrumentProxy]:
+        if isinstance(ref, InstrumentProxy):
+            return self._get_pipette_alias(ref), ref
+        elif isinstance(ref, str):
+            return ref, self._resolve_pipette_alias(ref)
+        raise TypeError(f"Pipette reference not understood: {ref!r}")
+
+    def get_slot_no(self, labware: protocol_api.labware.Labware):
+        parent = labware
+        while hasattr(parent, "parent"):
+            parent = parent.parent
+        return int(parent)
+
+    def load_tiprack(self, slot_no: int, pipette: PipetteRef,
+                     def_name: Optional[str] = None):
+        pipette_alias, pipette = self.match_pipette_ref(pipette)
+        if def_name is None:
+            def_name = self.get_run_param(
+                'equipment', f'tiprack_def_{pipette_alias}')
+        if self.slot_is_occupied(slot_no):
+            raise ValueError(f"slot {slot_no} already occupied")
+        tiprack = TiprackProxy(
+            self.ot_ctx.load_labware_by_name(def_name, slot_no), self)
+        self.tipracks[slot_no] = tiprack
+        pipette.tip_racks.append(tiprack)
+        self._emit_sim_event("SET_LABWARE", (slot_no, def_name, None))
+        self._emit_sim_event("INIT_TIPRACK", (slot_no,))
+        self.log_debug(f"Tiprack of type '{def_name}' loaded on slot "
+                       f"{slot_no} for pipette '{pipette_alias}'")
+        return tiprack
+
+    def load_labware(
+        self, def_name: str, slot_no: Optional[int] = None,
+        parent_module: Optional[protocol_api.contexts.ModuleContext] = None,
+        name: Optional[str] = None
+            ) -> protocol_api.labware.Labware:
+        if parent_module is not None:
+            labware = parent_module.load_labware_by_name(def_name)
+            slot_no = int(parent_module.labware.parent.parent)
+        elif slot_no is None:
+            raise ValueError(
+                "must specify slot_no or parent_module for load_labware()")
+        elif self.slot_is_occupied(slot_no):
+            raise ValueError(f"slot {slot_no} already occupied")
+        else:
+            labware = self.ot_ctx.load_labware_by_name(def_name, slot_no)
+        self.labware[slot_no] = labware
+        self._emit_sim_event("SET_LABWARE", (slot_no, def_name, name))
+        if name is not None:
+            self._sim_prefill_labware(slot_no, name)
+        self.log_debug(f"Labware of type '{def_name}' loaded on "
+                       f"slot {slot_no}")
+        return labware
+
+    def load_module(self, slot_no: int, def_name: str):
+        if self.slot_is_occupied(slot_no):
+            raise ValueError(f"slot {slot_no} already occupied")
+        module = self.ot_ctx.load_module(def_name, slot_no)
+        self.modules[slot_no] = module
+        return module
+
+    def load_tipracks(self, slot_nos: Iterable[int], pipette: PipetteRef,
+                      def_name: Optional[str] = None):
+        return {
+            slot_no: self.load_tiprack(
+                slot_no=slot_no,
+                def_name=def_name,
+                pipette=pipette)
+            for slot_no in slot_nos}
+
+    def reset_tipracks(self, slot_nos: Iterable[int]):
+        for slot_no in slot_nos:
+            self.reset_tiprack(slot_no)
+
+    def reset_tiprack(self, slot_no: int):
+        self._assert_tiprack_present(slot_no)
+        self.tipracks[slot_no].reset()
+        self.log_debug(f"Tiprack on slot {slot_no} reset")
+        self._emit_sim_event("INIT_TIPRACK", (slot_no,))
+
+    def unload_tiprack(self, slot_no: int):
+        del self.ot_ctx.deck[self.tipracks[slot_no].parent]
+        del self.tipracks[slot_no]
+        for pipette in self.pipette_left, self.pipette_right:
+            pipette.deref_tiprack(slot_no=slot_no)
+
+    def unload_tipracks(self, slot_nos: List[int]):
+        for slot_no in slot_nos:
+            self.unload_tiprack(slot_no)
+
+    def arm_tiprack_reset(self, slot_nos: Iterable[int]):
+        for pipette_alias in self._tiprack_reset_queues:
+            slot_nos_sub = \
+                tuple(self._filter_tiprack_slot_nos(pipette_alias, slot_nos))
+            if not slot_nos_sub:
+                continue
+            entry = TiprackResetGroup(tuple(slot_nos_sub))
+            self._tiprack_reset_queues[pipette_alias].append(entry)
+
+    def sim_add_liquid(self, slot_no: int, well_names: Sequence[str],
+                       liquid_name: str, vol: float):
+        # TODO: Also support Wells and Locations
+        for well_name in well_names:
+            self._emit_sim_event(
+                "ADD_LIQUID", (slot_no, well_name, liquid_name, vol))
+
+    def get_next_trash(self, pipette: PipetteRef):
+        pipette_alias, pipette = self.match_pipette_ref(pipette)
+        return next(self.trash_cycles[pipette_alias])
+
+    def slot_is_occupied(self, slot_no: int):
+        for d in (self.labware, self.tipracks, self.modules):
+            if slot_no in d:
+                return True
+
+    def move_to(
+        self,
+        pipette: PipetteRef,
+        location: Union[opentrons.types.Location, protocol_api.labware.Well]
+            ):
+        pipette = self.match_pipette_ref(pipette)[1]
+        pipette.move_to(location)
+        # TODO should there be a return value?
+
+    def aspirate(self, *args, **kwargs):
+        return self._aspirate_or_dispense('aspirate', *args, **kwargs)
+    aspirate.__annotations__ = _aspirate_or_dispense.__annotations__
+
+    def dispense(self, *args, **kwargs):
+        return self._aspirate_or_dispense('dispense', *args, **kwargs)
+    dispense.__annotations__ = _aspirate_or_dispense.__annotations__
+
+    def blow_out(
+        self,
+        pipette: PipetteRef,
+        location: Optional[Union[opentrons.types.Location,
+                           protocol_api.labware.Well]] = None,
+        slot_no: Optional[int] = None,
+        labware: Optional[protocol_api.labware.Labware] = None,
+        well_name: Optional[str] = None
+            ):
+        if location is None:
+            location = self._resolve_well_location(
+                slot_no=slot_no, labware=labware, well_name=well_name)
+        pipette = self.match_pipette_ref(pipette)[1]
+        return pipette.blow_out(location)
+
+    def pick_up_tip(
+        self,
+        pipette: PipetteRef,
+        location: Optional[Union[opentrons.types.Location,
+                           protocol_api.labware.Well]] = None,
+        slot_no: Optional[int] = None,
+        well_name: Optional[str] = None
+            ):
+        pipette_alias, pipette = self.match_pipette_ref(pipette)
+        if location is None and slot_no is not None:
+            self._assert_tiprack_present(slot_no)
+            if well_name is None:
+                location = self.tipracks[slot_no].next_tip(
+                    num_tips=pipette.channels)
+                if location is None:
+                    raise RuntimeError(
+                        f"No tips available for pipette {pipette_alias} "
+                        f"in tiprack on slot {slot_no}")
+            else:
+                location = self.tipracks[slot_no].well(well_name)
+        pipette.pick_up_tip(location)
+
+    pick_up_tips = pick_up_tip
+
+    def drop_tip(self, pipette: PipetteRef, *args, **kwargs):
+        pipette = self.match_pipette_ref(pipette)[1]
+        pipette.drop_tip(*args, **kwargs)
+
+    drop_tips = drop_tip
+
+
+ps_class = ProtocolSteps
+
+
+def _get_script_contents():
+    target_frame = None
+    frame = inspect.currentframe()
+    while True:
+        if frame.f_code.co_name == "run_python":
+            target_frame = frame
+            break
+        frame = frame.f_back
+        if frame is None:
+            break
+    return target_frame.f_locals['proto'].text
+
+
+def _get_script_contents_hash():
+    hash_obj = hashlib.sha1()
+    hash_obj.update(_get_script_contents().encode(TEXT_ENCODING))
+    return hash_obj.hexdigest()
+
+
+try:
+    SCRIPT_CONTENTS_HASH = _get_script_contents_hash()
+    SCRIPT_CONTENTS = _get_script_contents()
+except Exception:
+    pass
+
+
+##########
+
+
+@dataclass
+class CellSplittingColSet:
+    col_nos: Tuple[int, ...]
+    trypsin_start_time: Optional[float] = None
+    quenched: bool = False
+
+
+class CellSplitting(ProtocolSteps):
+    PIPETTE_TYPE_LEFT = 'p300_single_gen2'
+    PIPETTE_TYPE_RIGHT = 'p300_multi_gen2'
+    PIPETTE_ALIAS_1CH = '1ch'
+    PIPETTE_ALIAS_8CH = '8ch'
+    PIPETTE_ALIAS_LEFT = PIPETTE_ALIAS_1CH
+    PIPETTE_ALIAS_RIGHT = PIPETTE_ALIAS_8CH
+
+    class Liquid(Enum):
+        WASTE = 'waste'
+        PBS = 'pbs'
+        TRYPSIN = 'trypsin'
+        MEDIA = 'media'
+        WATER = 'water'
+        DETERGENT = 'detergent'
+        CELLS = 'cells'
+
+    class FlushStage(Enum):
+        PRIME = 'prime'
+        BETWEEN = 'between'
+        WASH = 'wash'
+        RINSE = 'rinse'
+
+    class TempdeckStage(Enum):
+        WARM = 'warm'
+        COAST = 'coast'
+        RT = 'rt'
+
+    class TiltedMixStage(Enum):
+        POSTQUENCH = 'postquench'
+        PRETRANSFER = 'pretransfer'
+        FROMSUSP = 'fromsusp'
+
+    class FlatMixStage(Enum):
+        PRETRANSFER = 'pretransfer'
+        POSTTRANSFER = 'posttransfer'
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.pipette_1ch = self._resolve_pipette_alias(self.PIPETTE_ALIAS_1CH)
+        self.pipette_8ch = self._resolve_pipette_alias(self.PIPETTE_ALIAS_8CH)
+        self.init_labware()
+        self._init_trough_wells()
+        self.init_col_sets(
+            cols_per_set=self.get_splitting_param('n_cols_per_set'))
+
+    def init_labware(self):
+        self.trough = self.load_labware(
+            slot_no=self.get_splitting_param('trough_slot'),
+            def_name=self.get_splitting_param('trough_def'),
+            name='trough')
+        self.tempdeck = self.load_module(
+            slot_no=self.get_splitting_param('tempdeck_slot'),
+            def_name=self.get_splitting_param('tempdeck_def'))
+        self.source_plate = self.load_labware(
+            parent_module=self.tempdeck,
+            def_name=self.get_splitting_param('source_plate_def'),
+            name='source_plate')
+        self.dest_plates = OrderedDict()
+        for plate_name in self.get_splitting_param('dest_plates'):
+            self.dest_plates[plate_name] = self.load_labware(
+                self.get_splitting_param('dest_plate_defs', plate_name),
+                self.get_splitting_param('dest_plate_slots', plate_name),
+                name=plate_name)
+
+    def init_col_sets(self, cols_per_set: int):
+        all_col_nos = list(self.get_col_nos())
+        self.col_sets = []
+        while all_col_nos:
+            col_nos: List[int] = []
+            for i in range(cols_per_set):
+                if not all_col_nos:
+                    break
+                col_nos.append(all_col_nos.pop(0))
+            if col_nos:
+                self.col_sets.append(
+                    CellSplittingColSet(col_nos=tuple(col_nos)))
+
+    def _init_trough_wells(self):
+        trough_config = self.get_splitting_param('trough_wells')
+        self.trough_wells = {}
+        for liquid in self.Liquid:
+            if liquid.value not in trough_config:
+                continue
+            self.trough_wells[liquid.value] = [
+                self.trough.wells_by_name()[well_name]
+                for well_name in trough_config[liquid.value]]
+        self.trough_cycles = {
+            k: itertools.cycle(self.trough_wells[k])
+            for k in self.trough_wells}
+
+    def _get_dest_plate_col_info(
+            self, dest_name: str, col_nos: Optional[Iterable[int]] = None) \
+            -> Tuple[Tuple[int, ...], str]:
+        all_col_nos = tuple(
+            int(x)
+            for x in self.dest_plates[dest_name].columns_by_name().keys())
+        if col_nos is None:
+            col_nos = self.get_col_nos()
+        col_nos = tuple(col_nos)
+        if set(col_nos) == set(all_col_nos):
+            cols_desc = "all wells"
+        else:
+            cols_desc = "columns " + ', '.join(str(x) for x in col_nos)
+        return col_nos, cols_desc
+
+    def _get_dest_plate_name(self, slot_no: int) -> str:
+        plates_by_slot = self.get_splitting_param('dest_plate_slots')
+        try:
+            return {plates_by_slot[k]: k for k in plates_by_slot}[slot_no]
+        except KeyError:
+            raise ValueError(
+                f"no destination plate assigned to slot {slot_no}")
+
+    def load_tiprack(self, slot_no: int, pipette: PipetteRef,
+                     def_name: Optional[str] = None
+                     ) -> protocol_api.labware.Labware:
+        pipette_alias, pipette = self.match_pipette_ref(pipette)
+        if def_name is None:
+            def_name = self.run_config['cell_splitting'][
+                f'tiprack_def_{pipette_alias}']
+        return ProtocolSteps.load_tiprack(self, slot_no, pipette, def_name)
+
+    def get_splitting_param(self, *keys: str,
+                            default: Any = ProtocolSteps.NoDefault):
+        return self.get_run_param('cell_splitting', *keys, default=default)
+
+    def get_col_nos(self, set_idx: Optional[int] = None) -> Sequence[int]:
+        if set_idx is not None:
+            return self.col_sets[set_idx].col_nos
+        return range(
+            self.get_splitting_param('start_col'),
+            self.get_splitting_param('end_col') + 1)
+
+    def col_set_exists(self, set_idx: int) -> bool:
+        return set_idx < len(self.col_sets)
+
+    def col_set_quench_ready(self, set_idx: int) -> bool:
+        if (not self.col_set_exists(set_idx)) \
+                or self.col_set_quenched(set_idx) \
+                or self.col_sets[set_idx].trypsin_start_time is None:
+            return False
+        if self.is_simulating() \
+                and globals().get('SIM_SKIP_WAITS', True):
+            return True
+        elapsed = time.monotonic() - self.col_sets[set_idx].trypsin_start_time
+        return elapsed >= self.get_splitting_param('trypsin_time')
+
+    def col_set_quenched(self, set_idx: int) -> bool:
+        return self.col_set_exists(set_idx) and self.col_sets[set_idx].quenched
+
+    def get_source_well_names(self, col_nos: Optional[Iterable[int]] = None,
+                              include: Optional[Iterable[str]] = None):
+        if col_nos is None:
+            col_nos = self.source_plate.columns_by_name().keys()
+        if include is not None:
+            include = set(include)
+        return [
+            well.well_name
+            for col_no in col_nos
+            for well in self.source_plate.columns_by_name()[col_no]
+            if include is None or well.well_name in include]
+
+    def get_source_well_approach_loc(self, well_name: str):
+        return self.get_source_well_bottom_center_loc(well_name) \
+            .move(opentrons.types.Point(0., 0., 11.))
+        # TODO: Verify that this is OK in the context of both the "aspirate
+        # old media" and "pbs wash" steps
+
+    def get_source_well_top_loc(self, well_name: str):
+        well = self.source_plate.wells_by_name()[well_name]
+        return well.top()
+
+    def get_source_well_wall_loc(self, well_name: str):
+        well = self.source_plate.wells_by_name()[well_name]
+        return well.center().move(opentrons.types.Point(x=-3.4, y=0., z=2.))
+
+    def get_source_well_bottom_corner_loc(self, well_name: str):
+        well = self.source_plate.wells_by_name()[well_name]
+        return well.center().move(opentrons.types.Point(x=-1.5, y=0., z=-5.))
+
+    def get_source_well_bottom_center_loc(self, well_name: str):
+        well = self.source_plate.wells_by_name()[well_name]
+        return well.center().move(opentrons.types.Point(x=1.5, y=0., z=-4.))
+
+    def get_tip_capacity(self, pipette: PipetteRef):
+        pipette_alias, pipette = self.match_pipette_ref(pipette)
+        return self.get_splitting_param(f'tip_capacity_{pipette_alias}')
+
+    def get_trypsin_vol(self, well_name: str):
+        # This is here in case it needs to be overriden on a per-well basis
+        return self.get_splitting_param('trypsin_vol')
+
+    def get_quench_vol(self, well_name: str):
+        # This is here in case it needs to be overriden on a per-well basis
+        return self.get_splitting_param('quench_vol')
+
+    def get_postquench_vol(self, well_name: str):
+        return self.get_trypsin_vol(well_name) + self.get_quench_vol(well_name)
+
+    def get_presusp_vol(self, well_name: str):
+        return self.get_splitting_param('presusp_well_vol')
+
+    def get_pretransfer_vol(self, well_name: str, presusp: bool = False,
+                            cci: bool = True):
+        start_vol = (self.get_postquench_vol(well_name) if not presusp
+                     else self.get_presusp_vol(well_name))
+        return (start_vol
+                - (self.get_splitting_param('cci_loading_vol') if cci else 0.))
+
+    def dest_plate_exists(self, dest_name: str):
+        return dest_name in self.dest_plates and (
+            dest_name in self.get_splitting_param('dest_target_vols')
+            or dest_name in self.get_splitting_param('target_counts',
+                                                     default={})
+            or dest_name in self.get_splitting_param('target_split_factors',
+                                                     default={}))
+
+    def get_dupe_prefill_vol(self, from_name: str,
+                             dupe_plates: Iterable[str] = ()):
+        dupe_plates = tuple(dupe_plates)
+        target_vol_stock = \
+            self.get_splitting_param('dest_target_vols', from_name)
+        dupe_vols = {
+            dupe_name: self.get_splitting_param('dest_target_vols', dupe_name)
+            for dupe_name in dupe_plates}
+        target_vol_dupes = sum(dupe_vols.values())
+        target_vol_total = target_vol_stock + target_vol_dupes
+        max_vol_8ch = self.get_tip_capacity(self.pipette_8ch)
+        max_vol_1ch = self.get_tip_capacity(self.pipette_1ch)
+        max_vol_stock = self.get_splitting_param(
+            'plate_vol_limits', from_name)
+
+        plates_desc = ", ".join(
+            repr(name) for name in (from_name,) + dupe_plates)
+        if target_vol_total > max_vol_stock:
+            raise RunConfigError(
+                f"Combined target volumes for {plates_desc} must be <= "
+                f"{max_vol_stock:.1f} μL ({from_name!r} capacity)")
+        for dupe_name, dupe_vol in dupe_vols.items():
+            if dupe_vol > max_vol_8ch:
+                raise RunConfigError(
+                    f"Target volume for {dupe_name!r} must be <= "
+                    f"{max_vol_8ch:.1f} μL (tip capacity for pipette "
+                    f"{self.PIPETTE_ALIAS_8CH!r})")
+
+        prefill_vol = target_vol_total - max_vol_1ch
+
+        if (prefill_vol > max_vol_8ch) or (prefill_vol > max_vol_stock):
+            raise ValueError(
+                f"Combined target volumes for {plates_desc} are too great for "
+                "the specified configuration of tips and labware")
+
+        return max(0., prefill_vol)
+
+    def _clip_aliquot_vol(
+            self, plate_name: str, well_name: str, aliquot_vol: float,
+            source_vol: float, split_factor: Optional[float] = None,
+            target_count: Optional[float] = None):
+        if split_factor is not None:
+            target_desc = \
+                f"split factor (1/{split_factor:.1f} -> {aliquot_vol:.1f} μL)"
+        elif target_count is not None:
+            target_desc = (
+                f"seeding target ({target_count*1e-3:.1f}k cells -> "
+                f"{aliquot_vol:.1f} μL)")
+
+        if (target_count is not None) and not (source_vol > 0.):
+            self.log_warning(
+                f"Plate {plate_name!r} well {well_name}: no cells left - "
+                "will skip transfer")
+            return None
+
+        max_vol = self.get_tip_capacity(self.pipette_1ch)
+        min_vol = self.get_splitting_param('min_cell_aliquot_vol')
+        if (aliquot_vol >= max_vol) and (source_vol > max_vol):
+            aliquot_vol = max_vol
+            self.log_warning(
+                f"Plate {plate_name!r} well {well_name}: {target_desc} out of "
+                f"pipetting range - aliquoting max volume ({aliquot_vol:.1f} "
+                "μL)")
+        elif aliquot_vol >= source_vol:
+            aliquot_vol = source_vol
+            self.log_warning(
+                f"Plate {plate_name!r} well {well_name}: not enough cells to "
+                f"meet {target_desc} - aliquoting available volume "
+                f"({aliquot_vol:.1f} μL)")
+        elif aliquot_vol <= min_vol:
+            aliquot_vol = min_vol
+            self.log_warning(
+                f"Plate {plate_name!r} well {well_name}: {target_desc} out of "
+                f"pipetting range - aliquoting min volume ({aliquot_vol:.1f} "
+                "μL)")
+
+        return aliquot_vol
+
+    def calc_aliquot_by_split(
+            self, plate_name: str, well_name: str,
+            dupe_plates: Iterable[str], split_factor: Optional[float] = None,
+            no_clip: bool = False) -> Optional[float]:
+        if split_factor is None:
+            split_factors = self.get_splitting_param(
+                'target_split_factors', plate_name)
+            if well_name not in split_factors:
+                raise RunConfigError("No split factor found for "
+                                     f"plate {plate_name!r} well {well_name}")
+            split_factor = split_factors[well_name]
+        if not split_factor or split_factor < 0.:
+            self.log_info(f"Plate {plate_name!r} well {well_name}: "
+                          f"split factor is zero - will skip transfer")
+            return None
+        source_vol = self.get_pretransfer_vol(well_name, cci=False)
+        dupes_fill_vol = sum(
+            self.get_splitting_param('dest_target_vols', dupe_name)
+            for dupe_name in dupe_plates)
+        stock_fill_vol = \
+            self.get_splitting_param('dest_target_vols', plate_name)
+        total_fill_vol = dupes_fill_vol + stock_fill_vol
+        multiplier = total_fill_vol / stock_fill_vol
+
+        aliquot_vol = multiplier * source_vol / split_factor
+
+        if no_clip:
+            return aliquot_vol
+        return self._clip_aliquot_vol(
+            plate_name, well_name, aliquot_vol, source_vol,
+            split_factor=split_factor)
+
+    def calc_aliquots_by_split(
+            self, plate_name: str, col_no: int, no_clip: bool = False,
+            dupe_plates: Iterable[str] = ()) -> Dict[str, Optional[float]]:
+        plate = self.dest_plates[plate_name]
+
+        well_names = [well.well_name
+                      for col in plate.columns(str(col_no))
+                      for well in col]
+        aliquot_vols = OrderedDict()
+        for well_name in well_names:
+            aliquot_vols[well_name] = self.calc_aliquot_by_split(
+                plate_name, well_name, dupe_plates=dupe_plates,
+                no_clip=no_clip)
+        return aliquot_vols
+
+    def calc_aliquot_by_density(
+            self, density: float, plate_name: str,
+            well_name: str, dupe_plates: Iterable[str] = (),
+            target_count: Optional[float] = None,
+            target_vol: Optional[float] = None,
+            source_vol: Optional[float] = None,
+            presusp: bool = False
+            ) -> Optional[float]:
+        if target_count is None:
+            target_counts = self.get_splitting_param(
+                'target_counts', plate_name)
+            if well_name not in target_counts:
+                self.log_info(f"Plate {plate_name!r} well "
+                              f"{well_name}: No target count found")
+                return None
+            target_count = target_counts[well_name]
+        if not target_count or target_count < 0.:
+            self.log_info(f"Plate {plate_name!r} well {well_name}: "
+                          f"target is zero, will skip transfer")
+            return None
+        if source_vol is None:
+            source_vol = self.get_pretransfer_vol(well_name, cci=True,
+                                                  presusp=presusp)
+
+        dupes_fill_vol = sum(
+            self.get_splitting_param('dest_target_vols', dupe_name)
+            for dupe_name in dupe_plates)
+
+        if target_vol is not None:
+            stock_fill_vol = target_vol
+        else:
+            stock_fill_vol = self.get_splitting_param('dest_target_vols', plate_name)
+
+        total_fill_vol = dupes_fill_vol + stock_fill_vol
+        multiplier = total_fill_vol / stock_fill_vol
+
+        if not (density > 0.):
+            aliquot_vol = self.get_tip_capacity(self.pipette_1ch)
+        else:
+            aliquot_vol = multiplier * target_count / density
+
+        aliquot_vol = self._clip_aliquot_vol(
+            plate_name, well_name, aliquot_vol, source_vol,
+            target_count=target_count)
+
+        mult_desc = f"(x {multiplier:.1f}) " if multiplier != 1. else ""
+        self.log_info(f"Plate {plate_name!r} well {well_name}: "
+                      f"target = {target_count/1e3:.1f}k {mult_desc}cells, "
+                      f"aliquot = {aliquot_vol:.1f} μL")
+        return aliquot_vol
+
+    def calc_aliquots_by_density(
+            self, densities: Dict[str, float], plate_name: str,
+            dupe_plates: Iterable[str] = (), presusp: bool = False,
+            target_vol: Optional[float] = None
+            ) -> Dict[str, Optional[float]]:
+        plate = self.dest_plates[plate_name]
+        well_names = self.get_source_well_names(include=densities.keys())
+        aliquot_vols = OrderedDict()
+        for well_name in well_names:
+            aliquot_vols[well_name] = \
+                self.calc_aliquot_by_density(
+                    densities[well_name], plate_name, well_name,
+                    dupe_plates=dupe_plates, presusp=presusp,
+                    target_vol=target_vol)
+        return aliquot_vols
+
+    def calc_aliquots_by_density_multidest(
+            self, densities: Dict[str, float], plate_names: Iterable[str],
+            presusp: bool = False,
+            source_vols: Optional[Dict[str, float]] = None
+            ) -> Dict[str, Dict[str, Optional[float]]]:
+        well_names = self.get_source_well_names(include=densities.keys())
+        if source_vols is None:
+            source_vols = {
+                well_name: self.get_pretransfer_vol(well_name, presusp=presusp)
+                for well_name in well_names
+                }
+        else:
+            source_vols = dict(source_vols)
+
+        aliquot_vols: Dict[str, Dict[str, Optional[float]]] = OrderedDict()
+        for plate_name in plate_names:
+            plate_aliquots = OrderedDict()
+            plate = self.dest_plates[plate_name]
+            for well_name in well_names:
+                if well_name not in {
+                        w.well_name for w in plate.wells_by_name().keys()}:
+                    continue
+                well_aliquot = self.calc_aliquot_by_density(
+                    densities[well_name], plate_name, well_name,
+                    presusp=presusp, source_vol=source_vols[well_name])
+                if well_aliquot is not None:
+                    source_vols[well_name] = max(
+                        0., source_vols[well_name] - well_aliquot)
+                plate_aliquots[well_name] = well_aliquot
+            aliquot_vols[plate_name] = plate_aliquots
+        return aliquot_vols
+
+    def get_next_trough_well(self, liquid: Union['CellSplitting.Liquid', str],
+                             pipette: Optional[PipetteRef] = None):
+        if pipette is not None:
+            pipette_alias, pipette = self.match_pipette_ref(pipette)
+        is_single = (pipette is not None) and (pipette.channels == 1)
+
+        liquid = self.Liquid(liquid)
+        well = next(self.trough_cycles[liquid.value])
+
+        # Offset to avoid smashing tips on the bottom ridges with the 1ch
+        # (default OT behavior centers the tip over the well)
+        return (
+            well if not is_single
+            else well.bottom(1.).move(opentrons.types.Point(y=4.5)))
+
+    def do_flat_mix(
+        self,
+        pipette: PipetteRef,
+        slot_no: int,
+        well_name: str,
+        stage: Optional[Union['CellSplitting.FlatMixStage', str]] = None,
+        n_cycles: Optional[int] = None,
+        well_vol: Optional[float] = None
+            ):
+        pipette_alias, pipette = self.match_pipette_ref(pipette)
+        plate = self.labware[slot_no]
+        well = plate.wells_by_name()[well_name]
+        if stage is not None:
+            stage = self.FlatMixStage(stage)
+            if n_cycles is None:
+                n_cycles = self.get_splitting_param(
+                    f'flat_mix_n_cycles_{stage.value}')
+            if well_vol is None:
+                plate_name = self._get_dest_plate_name(slot_no)
+                if stage == self.FlatMixStage.POSTTRANSFER:
+                    well_vol = self.get_splitting_param(
+                        'dest_target_vols', plate_name)
+                else:
+                    raise ValueError("must explicitly specify well_vol for "
+                                     f"stage={stage.value!r}")
+        if n_cycles is None or well_vol is None:
+            raise ValueError("must specify stage or (n_cycles and well_vol) "
+                             "for do_flat_mix()")
+        flow_rate = self.get_splitting_param('mix_flow_rate')
+
+        max_vol = self.get_tip_capacity(pipette)
+        mix_vol = min(max_vol - 1., 0.5 * well_vol)
+        BOTTOM_CLEARANCE = 1.
+        mix_radius = well.diameter / 2. - 1.
+
+        first = True
+        for _ in range(n_cycles):
+            for x, y in ((0., 0.), (1., 0.), (0., 1.),
+                         (-1., 0.), (0., -1.), (0., 0.)):
+                self.aspirate(
+                    pipette,
+                    mix_vol + (1. if first else 0.),
+                    well.bottom(z=BOTTOM_CLEARANCE).move(
+                        opentrons.types.Point(
+                            x=x * mix_radius, y=y * mix_radius)),
+                    flow_rate=flow_rate
+                )
+                self.dispense(
+                    pipette,
+                    mix_vol,
+                    well.bottom(z=BOTTOM_CLEARANCE).move(
+                        opentrons.types.Point(
+                            x=x * mix_radius, y=y * mix_radius)),
+                    flow_rate=flow_rate
+                )
+                if first:
+                    first = False
+        self.dispense(pipette, flow_rate=flow_rate)
+
+    def do_flat_mix_1ch(self, *args, **kwargs):
+        self.do_flat_mix(pipette=self.pipette_1ch, *args, **kwargs)
+
+    def do_flat_mix_8ch(self, slot_no: int, col_no: int, **kwargs):
+        self.do_flat_mix(pipette=self.pipette_8ch, slot_no=slot_no,
+                         well_name=f"A{col_no}", **kwargs)
+
+    def do_tilted_mix(
+        self,
+        pipette: PipetteRef,
+        well_name: str,
+        stage: Optional[Union['CellSplitting.TiltedMixStage', str]] = None,
+        n_cycles: Optional[int] = None,
+        well_vol: Optional[float] = None,
+        mix_portion: Optional[float] = None,
+        cci: bool = True,
+        presusp: bool = False,
+        plunger_boost: Optional[bool] = None,
+            ):
+        pipette_alias, pipette = self.match_pipette_ref(pipette)
+        if stage is not None:
+            stage = self.TiltedMixStage(stage)
+            stage_desc = f" for stage {stage.value!r}"
+            if n_cycles is None:
+                n_cycles = self.get_splitting_param(
+                    f'tilted_mix_n_cycles_{stage.value}')
+            if plunger_boost is None:
+                plunger_boost = self.get_splitting_param(
+                    f'tilted_mix_plunger_boost_{stage.value}', default=None)
+            if mix_portion is None:
+                mix_portion = self.get_splitting_param(
+                    f'tilted_mix_portion_{stage.value}', default=None)
+            if well_vol is None:
+                if stage == self.TiltedMixStage.FROMSUSP:
+                    well_vol = self.get_presusp_vol(well_name)
+                elif stage == self.TiltedMixStage.POSTQUENCH:
+                    well_vol = self.get_postquench_vol(well_name)
+                elif stage == self.TiltedMixStage.PRETRANSFER:
+                    well_vol = self.get_pretransfer_vol(
+                        well_name, cci=cci, presusp=presusp)
+        else:
+            stage_desc = ""
+        if n_cycles is None or well_vol is None:
+            raise ValueError("must specify stage or (n_cycles and well_vol) "
+                             "for do_tilted_mix()")
+        if mix_portion is None:
+            mix_portion = 0.6
+
+        boost_desc = ", plunger boost ON" if plunger_boost else ""
+        self.comment(f"Mixing at source plate location {well_name!r}, "
+                     f"{n_cycles} cycles{stage_desc}, "
+                     f"well vol {well_vol:.1f} μL{boost_desc}", also_log=True)
+
+        well_corner = self.get_source_well_bottom_corner_loc(well_name)
+        well_center = self.get_source_well_bottom_center_loc(well_name)
+        approach = self.get_source_well_approach_loc(well_name)
+
+        max_vol = self.get_tip_capacity(pipette) - 1.
+        flow_rate = self.get_splitting_param('mix_flow_rate')
+        mix_vol_corner = min(well_vol * mix_portion, max_vol)
+        mix_vol_center = max(0., min(mix_vol_corner - 40., well_vol - 70.))
+        if mix_vol_center == 0.:
+            n_cycles *= 2
+
+        pipette.move_to(approach)
+        with PlungerBoost(self, pipette, plunger_boost):
+            self.aspirate(pipette, mix_vol_corner + 1., well_corner,
+                          flow_rate=flow_rate)
+            for i in range(n_cycles - 1):
+                self.dispense(pipette, mix_vol_corner, flow_rate=flow_rate)
+                if mix_vol_center > 0.:
+                    self.aspirate(pipette, mix_vol_center, well_center,
+                                  flow_rate=flow_rate)
+                    self.dispense(pipette, mix_vol_center, flow_rate=flow_rate)
+                self.aspirate(pipette, mix_vol_corner, well_corner,
+                              flow_rate=flow_rate)
+        self.dispense(pipette, flow_rate=flow_rate)
+
+    def do_tilted_mix_1ch(self, *args, **kwargs):
+        self.do_tilted_mix(pipette=self.pipette_1ch, *args, **kwargs)
+
+    def do_tilted_mix_8ch(self, col_no: int, **kwargs):
+        self.do_tilted_mix(
+            pipette=self.pipette_8ch, well_name=f"A{col_no}", **kwargs)
+
+    def aspirate_old_media(self, set_idx: int):
+        pipette = self.pipette_8ch
+        col_nos = self.get_col_nos(set_idx)
+        set_desc = f"set {set_idx} (plate cols {','.join(map(str, col_nos))})"
+        max_vol = self.get_tip_capacity(pipette)
+
+        self.comment(f"Starting to aspirate old media from {set_desc}...",
+                     also_log=True)
+
+        for col_no in col_nos:
+            well_corner = self.get_source_well_bottom_corner_loc(f'A{col_no}')
+            approach = self.get_source_well_approach_loc(f'A{col_no}')
+
+            pipette.pick_up_tips()
+            pipette.move_to(approach)
+            self.aspirate(pipette, max_vol, well_corner, flow_rate=40.)
+            self.dispense(pipette, max_vol,
+                          self.get_next_trough_well(self.Liquid.WASTE),
+                          flow_rate=999.)
+            pipette.drop_tips()
+
+        self.comment(f"Aspirating old media from set {set_idx} complete.",
+                     also_log=True)
+
+    def do_cell_wash(self, set_idx: int,
+                     liquid: Optional[Union['CellSplitting.Liquid',
+                                            str]] = None,
+                     wash_vol: Optional[float] = None,
+                     dispense_rate: Optional[float] = None,
+                     aspirate_rate: Optional[float] = None):
+        col_nos = self.get_col_nos(set_idx)
+        if liquid is None:
+            liquid = self.Liquid.PBS
+        else:
+            liquid = self.Liquid(liquid)
+        if wash_vol is None:
+            wash_vol = self.get_splitting_param('pbs_wash_vol')
+        if dispense_rate is None:
+            dispense_rate = self.get_splitting_param('pbs_wash_dispense_rate')
+        if aspirate_rate is None:
+            aspirate_rate = self.get_splitting_param('pbs_wash_aspirate_rate')
+        pipette = self.pipette_8ch
+        max_vol = self.get_tip_capacity(pipette)
+
+        set_desc = f"set {set_idx} (plate cols {','.join(map(str, col_nos))})"
+        self.comment(f"Starting to wash {set_desc}...", also_log=True)
+
+        for col_no in col_nos:
+            well_corner = self.get_source_well_bottom_corner_loc(f'A{col_no}')
+            approach = self.get_source_well_approach_loc(f'A{col_no}')
+            wall = self.get_source_well_wall_loc(f'A{col_no}')
+
+            pipette.pick_up_tips()
+            pipette.aspirate(wash_vol,
+                             self.get_next_trough_well(self.Liquid.PBS))
+            pipette.move_to(approach)
+            self.dispense(pipette, wash_vol, wall, flow_rate=dispense_rate)
+            pipette.move_to(approach)
+            self.aspirate(pipette, max_vol, well_corner,
+                          flow_rate=aspirate_rate)
+            self.dispense(pipette, max_vol,
+                          self.get_next_trough_well(self.Liquid.WASTE),
+                          flow_rate=999.)
+            pipette.drop_tips()
+
+        self.comment(f"Washing set {set_idx} complete.", also_log=True)
+
+    def trypsinize(self, set_idx: int, reuse_tips: Optional[bool] = None):
+        # TODO see note on quench()
+        if reuse_tips is None:
+            reuse_tips = self.get_splitting_param('trypsinize_reuse_tips')
+        col_nos = self.get_col_nos(set_idx)
+        set_desc = f"set {set_idx} (plate cols {','.join(map(str, col_nos))})"
+        pipette = self.pipette_8ch
+
+        tip_mode_desc = "" if reuse_tips else " (not reusing tips)"
+        self.comment(
+            f"Starting to add trypsin to {set_desc}{tip_mode_desc}...",
+            also_log=True)
+
+        pipette.pick_up_tips()
+
+        trypsin_well = self.get_next_trough_well(self.Liquid.TRYPSIN)
+        for col_no in col_nos:
+            col_start_well = f'A{col_no}'
+            trypsin_vol = self.get_trypsin_vol(col_start_well)
+            pipette.aspirate(trypsin_vol, trypsin_well)
+            self.dispense(pipette, trypsin_vol,
+                          self.get_source_well_top_loc(col_start_well),
+                          flow_rate=300.)
+            self.log_debug(
+                f"Dispensed {trypsin_vol:.1f} μL trypsin for column {col_no}")
+            if col_no == col_nos[-1]:
+                self.col_sets[set_idx].trypsin_start_time = time.monotonic()
+            pipette.aspirate(20., in_air=True)
+            trypsin_well = self.get_next_trough_well(self.Liquid.TRYPSIN)
+            pipette.dispense(location=trypsin_well.top())
+            if col_no != col_nos[-1] and not reuse_tips:
+                pipette.drop_tips()
+                pipette.pick_up_tips()
+
+        pipette.drop_tips()
+        self.comment(
+            f"Adding trypsin to set {set_idx} complete.", also_log=True)
+
+    def quench(self, set_idx: int, reuse_tips: Optional[bool] = None,
+               mix_after: bool = False,
+               mix_stage: Optional['CellSplitting.TiltedMixStage'] = None):
+        # TODO: This is almost identical to the trypsinize fn --
+        # maybe try to deduplicate some code
+        cherryskipping_mode = \
+                self.get_splitting_param('cherryskipping_mode', default=None)
+        if reuse_tips is None and cherryskipping_mode:
+            reuse_tips = False
+        if reuse_tips is None:
+            reuse_tips = self.get_splitting_param('quench_reuse_tips')
+        if mix_stage is not None:
+            mix_stage = self.TiltedMixStage(mix_stage)
+        else:
+            mix_stage = self.TiltedMixStage.POSTQUENCH
+        col_nos = self.get_col_nos(set_idx)
+        set_desc = f"set {set_idx} (plate cols {','.join(map(str, col_nos))})"
+        pipette = self.pipette_8ch
+
+        if not self.col_set_quench_ready(set_idx):
+            self.log_info(f"Waiting to quench {set_desc}...")
+            while not self.col_set_quench_ready(set_idx):
+                # Calculate the remaining time and do a
+                # delay() instead of this while-loop?
+                time.sleep(1.)
+
+        tip_mode_desc = "" if reuse_tips else " (not reusing tips)"
+        self.comment(f"Starting to quench {set_desc}{tip_mode_desc}...",
+                     also_log=True)
+
+        pipette.pick_up_tips()
+
+        media_well = self.get_next_trough_well(self.Liquid.MEDIA)
+        for col_no in col_nos:
+            col_start_well = f'A{col_no}'
+            quench_vol = self.get_quench_vol(col_start_well)
+            pipette.aspirate(quench_vol, media_well)
+            self.dispense(pipette, quench_vol,
+                          self.get_source_well_top_loc(col_start_well),
+                          flow_rate=300.)
+            self.log_debug(
+                f"Dispensed {quench_vol:.1f} μL media "
+                f"to quench column {col_no}")
+
+            media_well = self.get_next_trough_well(self.Liquid.MEDIA)
+
+            if mix_after:
+                self.do_tilted_mix_8ch(col_no, stage=mix_stage)
+            else:
+                pipette.aspirate(20., in_air=True)
+                pipette.dispense(location=media_well.top())
+
+            if col_no != col_nos[-1] and not reuse_tips:
+                pipette.drop_tips()
+                pipette.pick_up_tips()
+
+            self.sim_add_liquid(
+                self.get_slot_no(self.source_plate),
+                [x.well_name for x in
+                    self.source_plate.columns_by_name()[str(col_no)]],
+                self.Liquid.CELLS.value,
+                1e-3
+                )
+
+        pipette.drop_tips()
+        self.comment(f"Quenching set {set_idx} complete.", also_log=True)
+        self.col_sets[set_idx].quenched = True
+
+    def do_prequench_steps(self, set_idx: int,
+                           reuse_tips: Optional[bool] = None):
+        if (reuse_tips is None and
+                self.get_splitting_param('cherryskipping_mode', default=None)):
+            reuse_tips = False
+
+        self.aspirate_old_media(set_idx)
+        self.do_cell_wash(set_idx)
+        self.trypsinize(set_idx, reuse_tips=reuse_tips)
+
+    def aliquot_from_source_plate(
+        self,
+        dest_name: str,
+        well_name: str,
+        vol: Optional[float],
+        dest_well: Optional[str] = None,
+        target_vol: Optional[float] = None,
+        topup_liquid: Optional[Union['CellSplitting.Liquid', str]] = None,
+        dupe_plates: Iterable[str] = (),
+        skip_zero: bool = True,
+        cci: bool = True,
+        presusp: bool = False,
+        pipette: Optional[PipetteRef] = None,
+            ):
+        if pipette is not None:
+            _, pipette = self.match_pipette_ref(pipette)
+        else:
+            pipette = self.pipette_1ch
+        if dest_well is None:
+            dest_well = well_name
+
+        self.comment(f"Aliquoting cells from source well {well_name} "
+                     f"to well {dest_well} on plate '{dest_name}'.")
+        if skip_zero and not vol:
+            self.log_info(f"Not aliquoting from source well {well_name} "
+                          f"to well {dest_well} on plate '{dest_name}'.")
+            return
+
+        if topup_liquid is not None:
+            topup_liquid = self.Liquid(topup_liquid)
+        else:
+            topup_liquid = self.Liquid.MEDIA
+        if target_vol is None:
+            target_vol = (
+                sum(self.get_splitting_param('dest_target_vols', dupe_name)
+                    for dupe_name in tuple(dupe_plates) + (dest_name,))
+                - self.get_dupe_prefill_vol(dest_name, dupe_plates))
+
+        max_vol = self.get_tip_capacity(pipette)
+
+        vol = min(max_vol, max(0., vol))
+        media_vol = min(max_vol, max(0., target_vol - vol))
+
+        media_desc = (f"{media_vol:.1f} μL of {topup_liquid.value!r} and "
+                      if media_vol > 0. else "")
+        self.log_info(f"Aliquoting {media_desc}{vol:.1f} μL "
+                      f"from source well {well_name} "
+                      f"to well {dest_well} on plate '{dest_name}'.")
+
+        destination_well =self.dest_plates[dest_name].wells_by_name()[dest_well]
+
+        pipette.pick_up_tip()
+
+        if media_vol > 0.:
+            pipette.aspirate(
+                media_vol, self.get_next_trough_well(
+                    topup_liquid, pipette=pipette))
+            pipette.dispense(media_vol, destination_well)
+
+        self.do_tilted_mix(pipette=pipette, well_name=well_name,
+                           stage=self.TiltedMixStage.PRETRANSFER,
+                           cci=cci, presusp=presusp)
+
+        pipette.aspirate(vol, self.get_source_well_bottom_corner_loc(well_name))
+        pipette.dispense(vol, destination_well)
+
+        pipette.aspirate(20., destination_well.top(), in_air=True)
+
+        pipette.drop_tip()
+
+    def discard_and_backfill_source_well(
+            self,
+            well_name: str,
+            vol: Optional[float],  # volume of cell suspension to leave
+            target_vol: Optional[float] = None,  # target vol to backfill to
+            topup_liquid: Optional[Union['CellSplitting.Liquid', str]] = None,
+            skip_zero: bool = True
+            ):
+        self.comment(f"Splitting source plate well {well_name} in place")
+
+        if vol is None or skip_zero and not vol:
+            self.log_info(f"Not splitting source plate well {well_name}.")
+            return
+
+        if topup_liquid is not None:
+            topup_liquid = self.Liquid(topup_liquid)
+        else:
+            topup_liquid = self.Liquid.MEDIA
+
+        if target_vol is None:
+            target_vol = self.get_splitting_param(
+                'dest_target_vols', 'source_plate')
+
+        pipette = self.pipette_1ch
+        waste_trough = self.get_next_trough_well(self.Liquid.WASTE)
+
+        max_vol = self.get_tip_capacity(pipette)
+
+        initial_well_volume = self.get_postquench_vol(well_name)
+        discard_vol = min(max_vol, max(0., initial_well_volume - vol))
+        media_vol = min(max_vol, max(
+            0., target_vol - initial_well_volume + discard_vol))
+        # TODO: Generate warnings if clipping occurs
+
+        media_desc = (
+            f" and replacing {media_vol:.1f} μL of {topup_liquid.value!r}"
+            if media_vol > 0. else "")
+        self.log_info(f"Discarding {discard_vol:.1f} μL "
+                      f"from source well {well_name}{media_desc}.")
+
+        # mix and discard
+        if discard_vol > 0.:
+            pipette.pick_up_tip()
+            self.do_tilted_mix_1ch(well_name=well_name,
+                                   stage=self.TiltedMixStage.PRETRANSFER,
+                                   cci=False)
+            self.aspirate(pipette, discard_vol,
+                          self.get_source_well_bottom_corner_loc(well_name))
+            self.dispense(pipette, max_vol, waste_trough, flow_rate=999.0)
+            pipette.drop_tip()
+
+        if media_vol > 0.:
+            pipette.pick_up_tip()
+            pipette.aspirate(
+                media_vol, self.get_next_trough_well(
+                    topup_liquid, pipette=pipette))
+            pipette.dispense(
+                media_vol, self.get_source_well_bottom_corner_loc(well_name))
+            pipette.drop_tip()
+
+    def transfer_to_dupe(self, from_name: str, dupe_name: str,
+                         vol: Optional[float] = None,
+                         col_nos: Optional[Iterable[int]] = None):
+        if vol is None:
+            vol = self.get_splitting_param('dest_target_vols', dupe_name)
+        col_nos, cols_desc = self._get_dest_plate_col_info(dupe_name, col_nos)
+        pipette = self.pipette_8ch
+        from_slot = self.get_slot_no(self.dest_plates[from_name])
+        dupe_slot = self.get_slot_no(self.dest_plates[dupe_name])
+        starting_vol = \
+            vol + self.get_splitting_param('dest_target_vols', from_name)
+
+        self.comment(f"Transferring {vol:.1f} μL from {cols_desc} on "
+                     f"{from_name!r} (slot {from_slot}) to {dupe_name!r} "
+                     f"(slot {dupe_slot})", also_log=True)
+        for col_no in col_nos:
+            pipette.pick_up_tips()
+            self.do_flat_mix_8ch(slot_no=from_slot, col_no=col_no,
+                                 stage=self.FlatMixStage.PRETRANSFER,
+                                 well_vol=starting_vol)
+            pipette.aspirate(
+                vol, self.dest_plates[from_name].wells_by_name()[f'A{col_no}'])
+            pipette.dispense(
+                vol, self.dest_plates[dupe_name].wells_by_name()[f'A{col_no}'])
+            self.do_flat_mix_8ch(slot_no=dupe_slot, col_no=col_no,
+                                 stage=self.FlatMixStage.POSTTRANSFER)
+            pipette.drop_tips()
+        self.comment(f"Transferring from {from_name!r} "
+                     f"to {dupe_name!r} done.", also_log=True)
+
+    def prefill_dest_plate(
+            self, dest_name: str, vol: float,
+            liquid: Optional['CellSplitting.Liquid'] = None,
+            col_nos: Optional[Iterable[int]] = None,
+            handle_tips: bool = True):
+        pipette = self.pipette_8ch
+        col_nos, cols_desc = self._get_dest_plate_col_info(dest_name, col_nos)
+        if liquid is not None:
+            liquid = self.Liquid(liquid)
+        else:
+            liquid = self.Liquid.MEDIA
+        if not vol:
+            self.comment(f"Not prefilling {cols_desc} of plate {dest_name!r} "
+                         f"with {liquid.value!r}", also_log=True)
+            return
+        dest_plate = self.dest_plates[dest_name]
+
+        self.comment(f"Prefilling {cols_desc} of plate {dest_name!r} with "
+                     f"{vol:.1f} μL of {liquid.value!r}...", also_log=True)
+        if handle_tips:
+            pipette.pick_up_tips()
+        trough_well = self.get_next_trough_well(liquid)
+        for col_no in col_nos:
+            pipette.aspirate(vol, trough_well)
+            well = dest_plate.wells_by_name()[f'A{col_no}']
+            pipette.dispense(vol, well.bottom(1.))
+            pipette.aspirate(20., well.top(), in_air=True)
+            trough_well = self.get_next_trough_well(liquid)
+            pipette.dispense(location=trough_well.top())
+        if handle_tips:
+            pipette.drop_tips()
+        self.comment(
+            f"Prefilling plate {dest_name!r} done.", also_log=True)
+
+    def deactivate_tempdeck(self):
+        self.log_info("Deactivating tempdeck.")
+        self.tempdeck.deactivate()
+
+    def set_tempdeck(self, temp: Optional[float] = None,
+                     stage: Optional[str] = None):
+        if stage is not None:
+            stage = self.TempdeckStage(stage)
+        if stage == self.TempdeckStage.COAST:
+            self.deactivate_tempdeck()
+            return
+        if temp is None:
+            if stage is None:
+                raise ValueError(
+                    "must specify either temp or stage for set_tempdeck()")
+            temp = self.get_splitting_param(f'tempdeck_temp_{stage.value}')
+        self.log_info(f"Setting tempdeck to {temp:.1f} °C...")
+        self.tempdeck.set_temperature(temp)
+        self.log_info("Tempdeck reached setpoint.")
+
+
+class CciCellSplitting(CellSplitting):
+    CCI_INSERTION_SPEED = 5.
+    CCI_N_PULLOUT_STEPS = 10
+    CCI_PULLOUT_STEP_VOL = 2.
+    CCI_PULLOUT_SPEED = 1.
+    CCI_PRE_LOADING_DELAY = 2.
+    CCI_LOADING_FLOW_RATE = 60.
+    SAMPLING_FLOW_RATE = 50.
+
+    cci_client: Optional['CciClient'] = None
+
+    def init_labware(self):
+        CellSplitting.init_labware(self)
+
+        self.cci_flow_cell = self.load_labware(
+            slot_no=self.get_splitting_param('cci_slot'),
+            def_name=self.get_splitting_param('cci_def'),
+            name='cci'
+            )
+        self.cci_approach_loc = \
+            self.cci_flow_cell.wells_by_name()['A1'].top(10.)
+        self.cci_loading_loc = \
+            self.cci_flow_cell.wells_by_name()['A1'].top(-5.)
+
+    def init_cci(self):
+        sim_use_cci = globals().get("SIM_USE_CCI", False)
+        self.comment("Attempting to connect to CCI...", also_log=True)
+        cci_cls = (
+            DummyCciClient if self.is_simulating() and not sim_use_cci
+            else CciClient)
+        cci_url = globals().get(
+            "SIM_OVERRIDE_CCI_URL",
+            self.get_run_param('cci', 'url'))
+        cci_client = cci_cls(cci_url)
+
+        while True:
+            try:
+                cci_client.start_new_record()
+                break
+            except CciError as e:
+                err_msg = f"Error while attempting contact with CCI: {e}"
+                self.log_error(err_msg)
+                self.pause_with_message(
+                    "Problem contacting CCI server on startup")
+                if self.is_simulating():
+                    time.sleep(2.)
+
+        self.cci_client = cci_client
+        self.comment("Connected to CCI, started new counting record.",
+                     also_log=True)
+
+    def _assert_cci_initialized(self):
+        caller_name = inspect.currentframe().f_back.f_code.co_name
+        if self.cci_client is None:
+            raise RuntimeError(
+                f"cci_init() must be called before {caller_name}()")
+
+    def do_cci_bg_scan(self):
+        self._assert_cci_initialized()
+        self.comment(f"Running CCI background scan...", also_log=True)
+        while True:
+            try:
+                self.cci_client.do_bg_scan()
+                break
+            except CciError as e:
+                err_msg = f"Error while attempting CCI background scan: {e}"
+                self.log_error(err_msg)
+                self.pause_with_message(f"CCI background scan error: {e}")
+                if self.is_simulating():
+                    time.sleep(2.)
+        self.comment(f"CCI background scan complete.", also_log=True)
+
+    def do_cci_counting_scan(self, col_no: int) -> Dict[str, float]:
+        self._assert_cci_initialized()
+        density_clip_min = self.get_splitting_param('cci_density_clip_min')
+        density_clip_max = self.get_splitting_param('cci_density_clip_max')
+        valid_area_warn_thresh = \
+            self.get_splitting_param('cci_valid_area_warn_thresh')
+        well_names = tuple(
+            x.well_name
+            for x in self.source_plate.columns_by_name()[str(col_no)])
+        assert len(well_names) == 8
+
+        self.comment(
+            f"Running CCI counting scan for source plate column {col_no}...",
+            also_log=True)
+        while True:
+            try:
+                densities, valid_areas, warnings = \
+                    self.cci_client.do_counting_scan()
+                break
+            except CciError as e:
+                err_msg = f"Error while attempting CCI counting scan: {e}"
+                self.log_error(err_msg)
+                self.pause_with_message("CCI error on counting scan")
+                if self.is_simulating():
+                    time.sleep(2.)
+        self.comment("CCI counting scan complete.", also_log=True)
+
+        densities_by_well = OrderedDict(zip(well_names, densities))
+        valid_areas_by_well = dict(zip(well_names, valid_areas))
+        warnings_by_well = dict(zip(well_names, warnings))
+
+        for well_name, density in densities_by_well.items():
+            for warning_desc in warnings_by_well.get(well_name, ()):
+                self.log_warning(f"Well {well_name}: "
+                                 f"CCI warning: {warning_desc}")
+            if valid_areas_by_well[well_name] < valid_area_warn_thresh:
+                self.log_warning(
+                    f"Well {well_name}: Low valid_area "
+                    f"({valid_areas_by_well[well_name]*100.:.0f}%) for image "
+                    "- possible bubble or obstruction")
+            if density > density_clip_max:
+                densities_by_well[well_name] = density_clip_max
+                self.log_warning(
+                    f"Well {well_name}: High measurement value {density:.1f} "
+                    f"cells/μL clipped to {densities_by_well[well_name]:.1f} "
+                    "cells/μL")
+            elif density < density_clip_min:
+                densities_by_well[well_name] = density_clip_min
+                self.log_warning(
+                    f"Well {well_name}: Low measurement value {density:.1f} "
+                    f"cells/μL clipped to {densities_by_well[well_name]:.1f} "
+                    "cells/μL")
+            self.log_info(f"Well {well_name}: density = {density:.1f} "
+                          "cells/μL, valid_area = "
+                          f"{valid_areas_by_well[well_name]*100.:.0f}%")
+
+        return densities_by_well
+
+    def load_cci_from_source_plate(self, col_no: int,
+                                   handle_tips: bool = False):
+        top_well = f'A{col_no}'
+        pipette = self.pipette_8ch
+        corner_loc = self.get_source_well_bottom_corner_loc(top_well)
+        loading_vol = self.get_splitting_param('cci_loading_vol')
+
+        self.comment(
+            f"Loading CCI from source column {col_no}.", also_log=True)
+        if handle_tips:
+            pipette.pick_up_tips()
+        self.aspirate(pipette, loading_vol, corner_loc,
+                      flow_rate=self.SAMPLING_FLOW_RATE)
+        pipette.move_to(self.cci_approach_loc)
+        pipette.move_to(self.cci_loading_loc, speed=self.CCI_INSERTION_SPEED)
+        self.delay(self.CCI_PRE_LOADING_DELAY)
+        self.dispense(pipette, loading_vol,
+                      flow_rate=self.CCI_LOADING_FLOW_RATE)
+        self.delay(self.get_splitting_param('cci_settling_time'))
+
+    def pull_out_of_cci(self):
+        self.pipette_8ch.move_to(
+            self.cci_approach_loc, speed=self.CCI_INSERTION_SPEED)
+
+    def prime_cci(
+            self, liquid: Optional[Union['CellSplitting.Liquid', str]] = None):
+        self.flush_cci(
+            stage=self.FlushStage.PRIME, liquid=liquid, handle_tips=False)
+        self.pipette_8ch.move_to(
+            self.trash_locations[self.PIPETTE_ALIAS_8CH][0])
+
+    def flush_cci(self, stage: Optional[Union['CellSplitting.FlushStage',
+                                              str]] = None,
+                  liquid: Optional[Union['CellSplitting.Liquid', str]] = None,
+                  n_cycles: Optional[int] = None, handle_tips: bool = True,
+                  reuse_tips: bool = None,
+                  flush_rate: Optional[float] = None,
+                  dwell_time: Optional[float] = None):
+        action_desc = "Flushing"
+        if stage is not None:
+            stage = self.FlushStage(stage)
+        if liquid is not None:
+            liquid = self.Liquid(liquid)
+        else:
+            if stage is None:
+                raise ValueError(
+                    "must specify liquid or stage for flush_cci()")
+            if stage == self.FlushStage.WASH:
+                liquid = self.Liquid.DETERGENT
+            elif stage == self.FlushStage.RINSE:
+                liquid = self.Liquid.WATER
+            else:
+                liquid = self.Liquid.PBS
+        if n_cycles is None:
+            if stage == self.FlushStage.WASH:
+                n_cycles = self.get_splitting_param('cci_wash_n_cycles')
+            elif stage == self.FlushStage.RINSE:
+                n_cycles = self.get_splitting_param('cci_rinse_n_cycles')
+            else:
+                n_cycles = 1
+        if flush_rate is None and stage is not None:
+            if stage == self.FlushStage.PRIME:
+                flush_rate = self.get_splitting_param('cci_prime_rate')
+                action_desc = "Priming"
+            else:
+                flush_rate = self.get_splitting_param('cci_flush_rate')
+        if dwell_time is None and stage is not None:
+            if stage == self.FlushStage.WASH:
+                dwell_time = self.get_splitting_param('cci_wash_dwell_time')
+        if reuse_tips is None:
+            reuse_tips = (stage != self.FlushStage.PRIME)
+
+        pipette = self.pipette_8ch
+        flush_vol = self.get_splitting_param('cci_flush_vol')
+
+        if not n_cycles:
+            self.comment(f"Skipping CCI flush with {liquid.value!r}.",
+                         also_log=True)
+            return
+
+        dwell_desc = (f" with {dwell_time:.1f} s dwell"
+                      if dwell_time is not None
+                      else "")
+        self.comment(
+            f"{action_desc} CCI with {n_cycles} x {flush_vol} μL "
+            f"of {liquid.value!r}{dwell_desc}.",
+            also_log=True)
+
+        if handle_tips:
+            pipette.pick_up_tips()
+
+        for i in range(n_cycles):
+            pipette.aspirate(flush_vol, self.get_next_trough_well(liquid))
+            pipette.move_to(self.cci_approach_loc)
+            pipette.move_to(self.cci_loading_loc,
+                            speed=self.CCI_INSERTION_SPEED)
+            self.delay(1.)
+
+            initial_vol = (
+                flush_vol
+                - self.CCI_N_PULLOUT_STEPS * self.CCI_PULLOUT_STEP_VOL)
+            self.dispense(pipette, vol=initial_vol, flow_rate=flush_rate)
+            if dwell_time is not None:
+                self.delay(dwell_time)
+            for c in range(1, self.CCI_N_PULLOUT_STEPS + 1):
+                z_offs = -5. * (1. - c / self.CCI_N_PULLOUT_STEPS)
+                pipette.move_to(
+                    self.cci_flow_cell.wells_by_name()['A1'].top(z_offs),
+                    speed=self.CCI_PULLOUT_SPEED)
+                self.dispense(pipette, self.CCI_PULLOUT_STEP_VOL)
+            if i < n_cycles - 1 and handle_tips and not reuse_tips:
+                pipette.drop_tips()
+                pipette.pick_up_tips()
+
+        if handle_tips:
+            pipette.drop_tips()
+
+
+class PlungerBoost:
+    MAX_SPEED = 150.
+    ACCEL = 1000.
+
+    def __init__(self, ps: ProtocolSteps, pipette: PipetteRef,
+                 enable: bool = True, max_speed: Optional[float] = None,
+                 accel: Optional[float] = None):
+        if max_speed is None:
+            max_speed = self.MAX_SPEED
+        if accel is None:
+            accel = self.ACCEL
+        self.ps = ps
+        self.pipette_alias, self.pipette = ps.match_pipette_ref(pipette)
+        self.axes = self.get_plunger_axis(self.pipette)
+        self.max_speed = max_speed
+        self.accel = accel
+        self.enable = enable
+
+        if ps.is_simulating():
+            self.smoothie = None
+            self.hw_loop = None
+            return
+        hw = ps.ot_ctx._implementation.get_hardware().hardware
+        self.smoothie = hw._backend._smoothie_driver
+        self.hw_loop = hw._loop
+
+    def __enter__(self):
+        if not self.enable:
+            return
+        self.ps.log_debug(
+            f"Enabling plunger boost for pipette {self.pipette_alias!r}, "
+            f"max speed {self.max_speed:.1f}, accel {self.accel:.1f}")
+        self.set_fullstepping(True)
+        self.set_max_speed(self.max_speed)
+        self.set_accel(self.accel)
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if not self.enable:
+            return
+        self.ps.log_debug(
+            f"Disabling plunger boost for pipette {self.pipette_alias!r}")
+        self.set_fullstepping(False)
+        self.reset_max_speed()
+        self.reset_accel()
+
+    @staticmethod
+    def get_plunger_axis(pipette: InstrumentProxy) -> str:
+        return {'left': "B", 'right': "C"}[pipette.mount]
+
+    def run_synchronously(self, fn: Callable, *args, **kwargs) -> Any:
+        assert self.hw_loop is not None  # make TC happy
+
+        if asyncio.iscoroutinefunction(fn):
+            coro_fn = fn
+        else:
+            async def coro_fn(*args, **kwargs):
+                return fn(*args, **kwargs)
+        coro = coro_fn(*args, **kwargs)
+        return asyncio.run_coroutine_threadsafe(coro, self.hw_loop).result()
+
+    def set_fullstepping(self, on: bool):
+        if self.smoothie is None:
+            return
+        on_cmd, off_cmd = \
+            self.smoothie._build_fullstep_configurations(self.axes)
+        cmd = on_cmd if on else off_cmd
+        self.run_synchronously(self.smoothie._send_command, cmd)
+
+    def set_max_speed(self, max_speed: float):
+        max_speeds = {k: max_speed for k in self.axes}
+        if self.smoothie is None:
+            return
+        self.run_synchronously(
+            self.smoothie.set_axis_max_speed, max_speeds, update=True)
+
+    def reset_max_speed(self):
+        if self.smoothie is None:
+            return
+        defaults = self.smoothie._config.default_max_speed
+        max_speeds = {k: v for (k, v) in defaults.items() if k in self.axes}
+        self.run_synchronously(
+            self.smoothie.set_axis_max_speed, max_speeds, update=True)
+
+    def set_accel(self, accel: float):
+        accels = {k: accel for k in self.axes}
+        if self.smoothie is None:
+            return
+        self.run_synchronously(self.smoothie.set_acceleration, accels)
+
+    def reset_accel(self):
+        if self.smoothie is None:
+            return
+        defaults = self.smoothie._config.acceleration
+        accels = {k: v for (k, v) in defaults.items() if k in self.axes}
+        self.run_synchronously(self.smoothie.set_acceleration, accels)
+
+
+##########
+
+
+# Run config for fixed-factor splitting
+
+run_config = {
+    'logging': {
+        'log_dir': "/var/lib/jupyter/notebooks/run_logs/",
+        'run_id': 'crazyplate_seeding_d4_f2_rs499',
+        'run_info': {
+            'operator': 'GC',
+            'source_plate_id': 'n/a',
+            'stock_plate_id': 'crzp30516 (rs=499, n_densities=4, max_split_factor=2.)',
+            'dupe_plate_id': '',
+            'comment': 'Seeding "crazy plate" from reservoir'
+        }
+    },
+    'liquid_tracking': {
+        'initial_fills': {
+            'trough': [
+                ('A6', 'media', 20.0e3),
+                ('A7', 'media', 20.0e3),
+                ],
+            'source_plate': [
+                (f'{row}{col}', 'old_media', 200.)
+                for row in "ABCDEFGH" for col in range(1, 13)
+                ]
+            }
+    },
+    'cell_splitting': {
+        'start_col': 1,
+        'end_col': 12,
+        'n_cols_per_set': 4,
+        'trypsin_vol': 60.,
+        'trypsin_time': 60. * 8.,
+        'trypsinize_reuse_tips': True,
+        'pbs_wash_vol': 100.,
+        'pbs_wash_dispense_rate': 20.,
+        'pbs_wash_aspirate_rate': 40.,
+        'quench_vol': 200.,
+        'quench_reuse_tips': True,
+        'mix_flow_rate': 1000.,
+        'tilted_mix_n_cycles_fromsusp': 10,
+        'tilted_mix_n_cycles_postquench': 15,
+        'tilted_mix_n_cycles_pretransfer': 4,
+        'tilted_mix_plunger_boost_postquench': True,
+        'tilted_mix_portion_postquench': 0.4,
+        'flat_mix_n_cycles_pretransfer': 1,
+        'flat_mix_n_cycles_posttransfer': 1,
+        'min_cell_aliquot_vol': 20.,
+        'tempdeck_temp_warm': 41.,
+        'tempdeck_temp_rt': 25.,
+        'tiprack_def_1ch': 'opentrons_96_filtertiprack_200ul',
+        'tip_capacity_1ch': 200.,
+        'tiprack_def_8ch': 'opentrons_96_filtertiprack_200ul',
+        'tip_capacity_8ch': 200.,
+        'tempdeck_def': 'tempdeck',
+        'tempdeck_slot': 3,
+        'source_plate_def': 'tilted_plate',
+        'dest_plates': ['stock_plate'],
+        'split_discard_target_vol': 200.,
+        'dest_plate_defs': {
+            'stock_plate': 'corning_96_wellplate_360ul_flat',
+            'dupe_plate': 'cellview_96_wellplate_440ul'
+            },
+        'dest_plate_slots': {
+            'stock_plate': 2,
+            'dupe_plate': 1
+            },
+        'dest_target_vols': {'stock_plate': 200.0},
+        'plate_vol_limits': {
+            'stock_plate': 300.,
+            },
+        'trough_def': 'usascientific_12_reservoir_22ml',
+        'trough_slot': 5,
+        'trough_wells': {
+            'waste':     [],
+            'pbs':       [],
+            'trypsin':   [],
+            'media':     ['A6', 'A7']
+            },
+        'target_split_factors': {
+            'stock_plate': {'A1': 1.4999999999999998, 'A2': 1.4999999999999998, 'A3': 2.0, 'A4': 1.4999999999999998, 'A5': 2.0, 'A6': 1.4999999999999998, 'A7': 1.4999999999999998, 'A8': 1.2, 'A9': 2.0, 'A10': 1.0, 'A11': 1.0, 'A12': 1.2, 'B1': 1.4999999999999998, 'B2': 1.2, 'B3': 1.4999999999999998, 'B4': 1.4999999999999998, 'B5': 1.4999999999999998, 'B6': 1.2, 'B7': 2.0, 'B8': 1.2, 'B9': 1.0, 'B10': 2.0, 'B11': 2.0, 'B12': 2.0, 'C1': 1.0, 'C2': 2.0, 'C3': 2.0, 'C4': 1.0, 'C5': 1.0, 'C6': 2.0, 'C7': 1.2, 'C8': 1.4999999999999998, 'C9': 1.4999999999999998, 'C10': 1.4999999999999998, 'C11': 1.2, 'C12': 1.0, 'D1': 1.2, 'D2': 1.4999999999999998, 'D3': 1.2, 'D4': 1.4999999999999998, 'D5': 1.4999999999999998, 'D6': 2.0, 'D7': 1.2, 'D8': 1.4999999999999998, 'D9': 2.0, 'D10': 2.0, 'D11': 1.2, 'D12': 1.0, 'E1': 1.2, 'E2': 1.0, 'E3': 2.0, 'E4': 1.2, 'E5': 2.0, 'E6': 1.2, 'E7': 1.4999999999999998, 'E8': 1.2, 'E9': 1.0, 'E10': 1.2, 'E11': 2.0, 'E12': 1.2, 'F1': 1.0, 'F2': 2.0, 'F3': 1.0, 'F4': 1.4999999999999998, 'F5': 1.2, 'F6': 1.0, 'F7': 1.4999999999999998, 'F8': 1.0, 'F9': 2.0, 'F10': 1.2, 'F11': 1.4999999999999998, 'F12': 1.0, 'G1': 2.0, 'G2': 1.2, 'G3': 1.2, 'G4': 1.0, 'G5': 1.0, 'G6': 1.4999999999999998, 'G7': 1.2, 'G8': 1.4999999999999998, 'G9': 1.0, 'G10': 1.0, 'G11': 2.0, 'G12': 1.0, 'H1': 2.0, 'H2': 1.0, 'H3': 2.0, 'H4': 1.0, 'H5': 1.2, 'H6': 1.0, 'H7': 2.0, 'H8': 1.2, 'H9': 2.0, 'H10': 1.4999999999999998, 'H11': 1.4999999999999998, 'H12': 1.0}
+        },
+        'cherryskipping_mode': False
+    }
+}
+
+
+##########
+
+
+metadata = {
+    'protocolName': "\"Crazy plate\" seeding",
+    'description': "Seeds a plate with a randomized arrangement of N different "
+                   "cell densities, drawing from a cell stock in the reservoir",
+    'apiLevel': '2.9'
+}
+
+
+class CrazyPlateSeeding(CellSplitting):
+    def get_pretransfer_vol(self, well_name: str, presusp: bool = False,
+                            cci: bool = False):
+        return 200.
+
+    def aliquot_from_reservoir(
+            self,
+            res_col_no: int,
+            dest_name: str,
+            well_name: str,
+            vol: Optional[float],
+            target_vol: Optional[float] = None,
+            topup_liquid: Optional[Union['CellSplitting.Liquid', str]] = None,
+            dupe_plates: Iterable[str] = (),
+            skip_zero: bool = True,
+            pipette: Optional[PipetteRef] = None,
+            ):
+        if pipette is not None:
+            _, pipette = self.match_pipette_ref(pipette)
+        else:
+            pipette = self.pipette_1ch
+
+        self.comment(f"Aliquoting cells from reservoir column {res_col_no} "
+                     f"to well {well_name} on plate '{dest_name}'.")
+        if skip_zero and not vol:
+            self.log_info(f"Not aliquoting "
+                          f"to well {well_name} on plate '{dest_name}'.")
+            return
+
+        if topup_liquid is not None:
+            topup_liquid = self.Liquid(topup_liquid)
+        else:
+            topup_liquid = self.Liquid.MEDIA
+        if target_vol is None:
+            target_vol = (
+                sum(self.get_splitting_param('dest_target_vols', dupe_name)
+                    for dupe_name in tuple(dupe_plates) + (dest_name,))
+                - self.get_dupe_prefill_vol(dest_name, dupe_plates))
+
+        max_vol = self.get_tip_capacity(pipette)
+
+        vol = min(max_vol, max(0., vol))
+        media_vol = min(max_vol, max(0., target_vol - vol))
+
+        media_desc = (f"{media_vol:.1f} μL of {topup_liquid.value!r} and "
+                      if media_vol > 0. else "")
+        self.log_info(f"Aliquoting {media_desc}{vol:.1f} μL "
+                      f"from reservoir column {res_col_no} "
+                      f"to well {well_name} on plate '{dest_name}'.")
+
+        destination_well =self.dest_plates[dest_name].wells_by_name()[well_name]
+
+        pipette.pick_up_tip()
+
+        if media_vol > 0.:
+            pipette.aspirate(
+                media_vol, self.get_next_trough_well(
+                    topup_liquid, pipette=pipette))
+            pipette.dispense(media_vol, destination_well)
+
+        # Mix
+        mix_flow_rate = self.get_splitting_param('mix_flow_rate')
+        with PlungerBoost(self, pipette, True):
+            for mix_y_offs in (
+                    4.5, 4.5 + 9., 4.5 + 18., -4.5 - 18., -4.5 - 9., -4.5):
+                mix_loc = (
+                    self.trough.wells_by_name()[f'A{res_col_no}']
+                    .bottom(6.0)
+                    .move(opentrons.types.Point(y=mix_y_offs))
+                    )
+                self.move_to(pipette, mix_loc)
+                self.aspirate(pipette, vol=max_vol, flow_rate=mix_flow_rate)
+                self.dispense(pipette, vol=max_vol, flow_rate=mix_flow_rate)
+
+        # Transfer sample
+        self.aspirate(pipette, vol=vol)
+        self.dispense(pipette, vol=vol, location=destination_well)
+        self.aspirate(
+            pipette, vol=20., location=destination_well.top(), in_air=True)
+
+        pipette.drop_tip()
+
+
+ps_class = CrazyPlateSeeding
+
+
+def ps_run(p: ps_class):
+    # Initial deck setups
+    p.load_tipracks(
+        slot_nos=[4],
+        pipette='1ch'
+        )
+
+    col_nos = p.get_col_nos()
+    for (col_idx, col_no) in enumerate(col_nos):
+        # Calculate aliquot volumes for destination plate(s) based on
+        # user supplied split factors
+        aliquot_vols = p.calc_aliquots_by_split(
+            'stock_plate', col_no, no_clip=True)
+
+        # Transfer 1 column worth of cell aliquots from reservoir to output plate
+        for well_name in aliquot_vols:
+            p.aliquot_from_reservoir(
+                res_col_no=12,
+                dest_name='stock_plate',
+                well_name=well_name,
+                vol=aliquot_vols[well_name]
+                )

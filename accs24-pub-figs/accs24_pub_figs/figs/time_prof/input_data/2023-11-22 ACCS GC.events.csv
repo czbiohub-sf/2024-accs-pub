@@ -1,0 +1,25 @@
+stop,start,timestamp,desc
+,,,GC ACCS run 2023-11-22; setup phase timed by GC; cleanup phase timed by SV; setup phase had to be reconstructed from screenshots due to lost file; CPL: 231123 v2
+,setup_trashbin,1700681921000,0  (start) Line trash bin - first touch
+setup_trashbin,setup_cci,1700682025415,1  Flow cell clean & install - touch dish
+setup_cci,setup_bsc,1700682171697,2  Re-spray - touch bottle
+setup_bsc,setup_labware,1700682189380,3  Tipbox loadin - touch tipbox
+,,1700682335277,4  Dest plate install & label - touch pkg
+setup_labware,setup_reagents,1700682385425,5  Reservoir fill & install - touch pkg
+setup_reagents,setup_sw,1700682643673,6  SW / tempdeck start - touch computer
+,,1700682699422,7  Proto setup/load & start CCI - click folder
+setup_sw,setup_prerun,1700682757962,8  Source plate retrieve - leave computer
+,,1700682802029,9  Source plate inst/label - plate down
+,,1700682809235,10 Labware unlidding - first touch
+setup_prerun,walk_away,1700682841166,11 Click run
+walk_away,cleanup_plates,1700691578174,12 Dest plate away - touch plate
+cleanup_plates,cleanup_labware,1700691614086,13 Tipbox cleanup - sit down
+cleanup_labware,cleanup_plates,1700691686729,14 Source plate disposal - touch aspirator
+cleanup_plates,cleanup_cci,1700691744226,15 CCI cleanup - first touch
+,,1700691816767,16 CCI cleanup - waste cup down
+cleanup_cci,cleanup_trashbin,1700691904801,19 Trash empty - touch bin
+cleanup_trashbin,cleanup_cci,1700691955352,cleaning fc
+,,1700692069416,18 Misc hardware clean - first touch
+,,1700692123388,20 CCI final clean - touch aspirator
+cleanup_cci,cleanup_bsc,1700692140420,21 BSC clean - aspirator
+cleanup_bsc,,1700692176970,22 (finish) BSC shut

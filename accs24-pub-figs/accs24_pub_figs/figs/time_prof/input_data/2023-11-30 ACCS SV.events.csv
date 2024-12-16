@@ -1,0 +1,25 @@
+stop,start,timestamp,desc
+,,,SV ACCS run 2023-11-30; timed by GC; CPL: 2023-11-30 accs op v4
+,setup_sw,1701379693820,0  SW start - touch computer
+,,1701379713682,1  Protocol setup/load - click folder
+setup_sw,setup_trashbin,1701379848299,2  (start) Line trash bin - first touch
+setup_trashbin,setup_cci,1701379960916,3  Flow cell clean & install - touch dish
+setup_cci,setup_bsc,1701380223658,4  Re-spray - touch bottle
+setup_bsc,setup_labware,1701380263546,5  Tipbox loadin - touch tipbox
+,,1701380431507,6  Dest plate install & label - touch pkg
+setup_labware,setup_reagents,1701380476566,7  Reservoir fill & install - touch pkg
+setup_reagents,setup_prerun,1701380819916,8  Source plate retrieve - leave chair
+,,1701380819940,9  Source plate inst/label - plate down
+,,1701380819960,10 Labware unlidding - first touch
+setup_prerun,walk_away,1701380899214,11 Click run
+walk_away,cleanup_plates,1701389635136,12 Dest plate away - touch plate
+,,1701389673582,13 Source plate disposal - sit down
+cleanup_plates,cleanup_labware,1701389753501,14 Tipbox cleanup - first touch
+cleanup_labware,cleanup_cci,1701389817587,15 CCI cleanup - first touch
+,,1701390091240,16 CCI cleanup - waste cup down
+cleanup_cci,cleanup_labware,1701390278863,17 Reservoir disposal - touch aspirator
+cleanup_labware,cleanup_cci,1701390369373,18 Misc hardware clean - first touch
+cleanup_cci,cleanup_trashbin,1701390391767,19 Trash empty - touch bin
+cleanup_trashbin,cleanup_cci,1701390453147,20 CCI final - touch aspirator
+cleanup_cci,cleanup_bsc,1701390490446,21 BSC clean - touch aspirator
+cleanup_bsc,,1701390542343,22 (finish) BSC shut

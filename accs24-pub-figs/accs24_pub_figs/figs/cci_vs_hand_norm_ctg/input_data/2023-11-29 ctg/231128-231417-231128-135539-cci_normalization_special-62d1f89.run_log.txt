@@ -1,0 +1,555 @@
+2023-11-28 23:14:17.197 DEBUG:   (start of logging session)
+2023-11-28 23:14:17.200 DEBUG:   Writing log hardcopy to path: '/var/lib/jupyter/notebooks/run_logs/231128-231417-231128-135539-cci_normalization_special-62d1f89.run_log.txt'
+2023-11-28 23:14:17.203 DEBUG:   Copying script contents to path: '/var/lib/jupyter/notebooks/run_logs/231128-231417-231128-135539-cci_normalization_special-62d1f89.script_contents.txt'
+2023-11-28 23:14:17.331 INFO:    Run info: run ID: '231128-231417-231128-135539-cci_normalization_special-62d1f89'
+2023-11-28 23:14:17.334 INFO:    Run info: source hash: '15e287a32fd91d700efa6852c7cf7af580443520'
+2023-11-28 23:14:17.338 INFO:    Run info: config hash: 'b526ffb8953716b9ea1f4ad31a6144b338f0da00'
+2023-11-28 23:14:17.346 INFO:    Run info: script hash: '62d1f896caf25f7dbff002425247c8bfc481bd46'
+2023-11-28 23:14:17.349 INFO:    Run info: 'operator': 'GC'
+2023-11-28 23:14:17.351 INFO:    Run info: 'flowcell_id': 'P05-S08'
+2023-11-28 23:14:17.354 INFO:    Run info: 'source_plate_id': 'AC31127FR crazyplate seeded by Freckles on 11/27'
+2023-11-28 23:14:17.356 INFO:    Run info: 'stock_plate_id': 'AC31128AR'
+2023-11-28 23:14:17.359 INFO:    Run info: 'dupe_plate_id': ''
+2023-11-28 23:14:17.362 INFO:    Run info: 'comment': 'CCI norm for CTG. Using 2mL 96w assay block to hold reagents.'
+2023-11-28 23:14:17.365 INFO:    Robot info: name: OT2-SWEETPEA
+2023-11-28 23:14:17.370 INFO:    Pipette info (1ch): model: 'p300_single_v2.1'
+2023-11-28 23:14:17.378 INFO:    Pipette info (1ch): serial number: 'P3HSV212021031904'
+2023-11-28 23:14:17.383 INFO:    Pipette info (8ch): model: 'p300_multi_v2.0'
+2023-11-28 23:14:17.388 INFO:    Pipette info (8ch): serial number: 'P3HMV202020052706'
+2023-11-28 23:14:17.448 DEBUG:   Labware of type 'usa_12well_22ml_reservoir_lifted_76mm5' loaded on slot 9
+2023-11-28 23:14:17.655 DEBUG:   Labware of type 'tilted_plate' loaded on slot 3
+2023-11-28 23:14:17.769 DEBUG:   Labware of type 'corning_96_wellplate_360ul_flat' loaded on slot 2
+2023-11-28 23:14:17.814 DEBUG:   Labware of type 'cci25_right' loaded on slot 6
+2023-11-28 23:14:17.827 NOTICE:  Protocol starting: CCI normalization (modified) (231128-231417-231128-135539-cci_normalization_special-62d1f89)
+2023-11-28 23:14:17.835 DEBUG:   Running protocol in profiler
+2023-11-28 23:14:17.838 DEBUG:   Writing profiler data to: '/var/lib/jupyter/notebooks/run_logs/231128-231417-231128-135539-cci_normalization_special-62d1f89.pstat.dmp'
+2023-11-28 23:14:17.967 DEBUG:   Tiprack of type 'opentrons_96_filtertiprack_200ul' loaded on slot 5 for pipette '8ch'
+2023-11-28 23:14:18.113 DEBUG:   Tiprack of type 'opentrons_96_filtertiprack_200ul' loaded on slot 8 for pipette '8ch'
+2023-11-28 23:14:18.826 DEBUG:   Tiprack of type 'opentrons_96_filtertiprack_200ul' loaded on slot 4 for pipette '8ch'
+2023-11-28 23:14:18.980 DEBUG:   Tiprack of type 'opentrons_96_filtertiprack_200ul' loaded on slot 7 for pipette '8ch'
+2023-11-28 23:14:19.208 DEBUG:   Tiprack of type 'opentrons_96_filtertiprack_200ul' loaded on slot 10 for pipette '8ch'
+2023-11-28 23:14:19.343 DEBUG:   Tiprack of type 'opentrons_96_filtertiprack_200ul' loaded on slot 11 for pipette '1ch'
+2023-11-28 23:14:19.356 INFO:    Attempting to connect to CCI...
+2023-11-28 23:14:19.709 INFO:    Connected to CCI, started new counting record.
+2023-11-28 23:14:19.713 INFO:    Setting tempdeck to 41.0 °C...
+2023-11-28 23:14:20.628 INFO:    Tempdeck reached setpoint.
+2023-11-28 23:14:26.951 INFO:    Priming CCI with 1 x 200.0 μL of 'pbs'.
+2023-11-28 23:15:05.433 INFO:    Running CCI background scan...
+2023-11-28 23:16:20.497 INFO:    CCI background scan complete.
+2023-11-28 23:16:30.036 INFO:    Flushing CCI with 1 x 200.0 μL of 'pbs'.
+2023-11-28 23:17:05.217 INFO:    Starting to aspirate old media from set 0 (plate cols 1,2,3,4)...
+2023-11-28 23:18:51.777 INFO:    Aspirating old media from set 0 complete.
+2023-11-28 23:18:51.785 INFO:    Starting to wash set 0 (plate cols 1,2,3,4)...
+2023-11-28 23:21:14.344 INFO:    Washing set 0 complete.
+2023-11-28 23:21:14.354 INFO:    Starting to add trypsin to set 0 (plate cols 1,2,3,4)...
+2023-11-28 23:21:24.598 DEBUG:   Dispensed 60.0 μL trypsin for column 1
+2023-11-28 23:21:30.782 DEBUG:   Dispensed 60.0 μL trypsin for column 2
+2023-11-28 23:21:36.873 DEBUG:   Dispensed 60.0 μL trypsin for column 3
+2023-11-28 23:21:42.961 DEBUG:   Dispensed 60.0 μL trypsin for column 4
+2023-11-28 23:21:56.261 INFO:    Adding trypsin to set 0 complete.
+2023-11-28 23:21:56.272 INFO:    Starting to aspirate old media from set 1 (plate cols 5,6,7,8)...
+2023-11-28 23:23:43.068 INFO:    Aspirating old media from set 1 complete.
+2023-11-28 23:23:43.079 INFO:    Starting to wash set 1 (plate cols 5,6,7,8)...
+2023-11-28 23:26:04.907 INFO:    Washing set 1 complete.
+2023-11-28 23:26:04.914 INFO:    Starting to add trypsin to set 1 (plate cols 5,6,7,8)...
+2023-11-28 23:26:14.962 DEBUG:   Dispensed 60.0 μL trypsin for column 5
+2023-11-28 23:26:21.001 DEBUG:   Dispensed 60.0 μL trypsin for column 6
+2023-11-28 23:26:27.031 DEBUG:   Dispensed 60.0 μL trypsin for column 7
+2023-11-28 23:26:33.056 DEBUG:   Dispensed 60.0 μL trypsin for column 8
+2023-11-28 23:26:46.356 INFO:    Adding trypsin to set 1 complete.
+2023-11-28 23:26:46.361 INFO:    Waiting to quench set 0 (plate cols 1,2,3,4)...
+2023-11-28 23:29:43.694 INFO:    Starting to quench set 0 (plate cols 1,2,3,4)...
+2023-11-28 23:29:55.846 DEBUG:   Dispensed 200.0 μL media to quench column 1
+2023-11-28 23:30:04.028 DEBUG:   Dispensed 200.0 μL media to quench column 2
+2023-11-28 23:30:12.177 DEBUG:   Dispensed 200.0 μL media to quench column 3
+2023-11-28 23:30:20.245 DEBUG:   Dispensed 200.0 μL media to quench column 4
+2023-11-28 23:30:33.594 INFO:    Quenching set 0 complete.
+2023-11-28 23:30:33.603 INFO:    Starting to aspirate old media from set 2 (plate cols 9,10,11,12)...
+2023-11-28 23:32:21.008 INFO:    Aspirating old media from set 2 complete.
+2023-11-28 23:32:21.021 INFO:    Starting to wash set 2 (plate cols 9,10,11,12)...
+2023-11-28 23:34:45.241 INFO:    Washing set 2 complete.
+2023-11-28 23:34:45.249 INFO:    Starting to add trypsin to set 2 (plate cols 9,10,11,12)...
+2023-11-28 23:34:55.972 DEBUG:   Dispensed 60.0 μL trypsin for column 9
+2023-11-28 23:35:01.947 DEBUG:   Dispensed 60.0 μL trypsin for column 10
+2023-11-28 23:35:07.864 DEBUG:   Dispensed 60.0 μL trypsin for column 11
+2023-11-28 23:35:13.841 DEBUG:   Dispensed 60.0 μL trypsin for column 12
+2023-11-28 23:35:27.174 INFO:    Adding trypsin to set 2 complete.
+2023-11-28 23:35:27.185 INFO:    Starting to quench set 1 (plate cols 5,6,7,8)...
+2023-11-28 23:35:40.002 DEBUG:   Dispensed 200.0 μL media to quench column 5
+2023-11-28 23:35:48.020 DEBUG:   Dispensed 200.0 μL media to quench column 6
+2023-11-28 23:35:56.017 DEBUG:   Dispensed 200.0 μL media to quench column 7
+2023-11-28 23:36:04.009 DEBUG:   Dispensed 200.0 μL media to quench column 8
+2023-11-28 23:36:17.310 INFO:    Quenching set 1 complete.
+2023-11-28 23:36:23.378 INFO:    Mixing at source plate location 'A1', 15 cycles for stage 'postquench', well vol 260.0 μL, plunger boost ON
+2023-11-28 23:36:24.617 DEBUG:   Enabling plunger boost for pipette '8ch', max speed 150.0, accel 1000.0
+2023-11-28 23:36:49.518 DEBUG:   Disabling plunger boost for pipette '8ch'
+2023-11-28 23:36:50.393 INFO:    Loading CCI from source column 1.
+2023-11-28 23:37:58.470 INFO:    Running CCI counting scan for source plate column 1...
+2023-11-28 23:39:13.679 INFO:    CCI counting scan complete.
+2023-11-28 23:39:13.686 INFO:    Well A1: density = 95.4 cells/μL, valid_area = 96%
+2023-11-28 23:39:13.690 INFO:    Well B1: density = 82.8 cells/μL, valid_area = 97%
+2023-11-28 23:39:13.696 INFO:    Well C1: density = 117.9 cells/μL, valid_area = 97%
+2023-11-28 23:39:13.700 INFO:    Well D1: density = 118.3 cells/μL, valid_area = 98%
+2023-11-28 23:39:13.703 INFO:    Well E1: density = 104.5 cells/μL, valid_area = 98%
+2023-11-28 23:39:13.706 INFO:    Well F1: density = 131.1 cells/μL, valid_area = 98%
+2023-11-28 23:39:13.710 INFO:    Well G1: density = 36.3 cells/μL, valid_area = 98%
+2023-11-28 23:39:13.713 INFO:    Well H1: density = 86.1 cells/μL, valid_area = 98%
+2023-11-28 23:39:13.769 INFO:    Plate 'stock_plate' well A1: target = 12.5k cells, aliquot = 131.0 μL
+2023-11-28 23:39:13.773 INFO:    Plate 'stock_plate' well B1: target = 12.5k cells, aliquot = 151.0 μL
+2023-11-28 23:39:13.777 INFO:    Plate 'stock_plate' well C1: target = 12.5k cells, aliquot = 106.0 μL
+2023-11-28 23:39:13.781 INFO:    Plate 'stock_plate' well D1: target = 12.5k cells, aliquot = 105.6 μL
+2023-11-28 23:39:13.788 INFO:    Plate 'stock_plate' well E1: target = 12.5k cells, aliquot = 119.6 μL
+2023-11-28 23:39:13.792 INFO:    Plate 'stock_plate' well F1: target = 12.5k cells, aliquot = 95.3 μL
+2023-11-28 23:39:13.796 WARNING: Plate 'stock_plate' well G1: seeding target (12.5k cells -> 344.7 μL) out of pipetting range - aliquoting max volume (200.0 μL)
+2023-11-28 23:39:13.805 INFO:    Plate 'stock_plate' well G1: target = 12.5k cells, aliquot = 200.0 μL
+2023-11-28 23:39:13.808 INFO:    Plate 'stock_plate' well H1: target = 12.5k cells, aliquot = 145.2 μL
+2023-11-28 23:39:28.066 INFO:    Flushing CCI with 1 x 200.0 μL of 'pbs'.
+2023-11-28 23:40:03.684 INFO:    Aliquoting 69.0 μL of 'media' and 131.0 μL from source well A1 to well A1 on plate 'stock_plate'.
+2023-11-28 23:40:18.778 INFO:    Mixing at source plate location 'A1', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-28 23:41:26.230 INFO:    Aliquoting 49.0 μL of 'media' and 151.0 μL from source well B1 to well B1 on plate 'stock_plate'.
+2023-11-28 23:41:38.335 INFO:    Mixing at source plate location 'B1', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-28 23:42:12.957 INFO:    Aliquoting 94.0 μL of 'media' and 106.0 μL from source well C1 to well C1 on plate 'stock_plate'.
+2023-11-28 23:42:26.042 INFO:    Mixing at source plate location 'C1', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-28 23:42:59.727 INFO:    Aliquoting 94.4 μL of 'media' and 105.6 μL from source well D1 to well D1 on plate 'stock_plate'.
+2023-11-28 23:43:12.879 INFO:    Mixing at source plate location 'D1', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-28 23:43:46.480 INFO:    Starting to quench set 2 (plate cols 9,10,11,12)...
+2023-11-28 23:44:01.568 DEBUG:   Dispensed 200.0 μL media to quench column 9
+2023-11-28 23:44:09.519 DEBUG:   Dispensed 200.0 μL media to quench column 10
+2023-11-28 23:44:17.445 DEBUG:   Dispensed 200.0 μL media to quench column 11
+2023-11-28 23:44:25.448 DEBUG:   Dispensed 200.0 μL media to quench column 12
+2023-11-28 23:44:38.698 INFO:    Quenching set 2 complete.
+2023-11-28 23:44:38.702 INFO:    Deactivating tempdeck.
+2023-11-28 23:44:38.746 INFO:    Aliquoting 80.4 μL of 'media' and 119.6 μL from source well E1 to well E1 on plate 'stock_plate'.
+2023-11-28 23:44:53.956 INFO:    Mixing at source plate location 'E1', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-28 23:45:27.976 INFO:    Aliquoting 104.7 μL of 'media' and 95.3 μL from source well F1 to well F1 on plate 'stock_plate'.
+2023-11-28 23:45:41.412 INFO:    Mixing at source plate location 'F1', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-28 23:46:14.852 INFO:    Aliquoting 200.0 μL from source well G1 to well G1 on plate 'stock_plate'.
+2023-11-28 23:46:21.258 INFO:    Mixing at source plate location 'G1', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-28 23:46:56.386 INFO:    Aliquoting 54.8 μL of 'media' and 145.2 μL from source well H1 to well H1 on plate 'stock_plate'.
+2023-11-28 23:47:08.717 INFO:    Mixing at source plate location 'H1', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-28 23:47:51.810 INFO:    Mixing at source plate location 'A2', 15 cycles for stage 'postquench', well vol 260.0 μL, plunger boost ON
+2023-11-28 23:47:52.961 DEBUG:   Enabling plunger boost for pipette '8ch', max speed 150.0, accel 1000.0
+2023-11-28 23:48:17.771 DEBUG:   Disabling plunger boost for pipette '8ch'
+2023-11-28 23:48:18.636 INFO:    Loading CCI from source column 2.
+2023-11-28 23:49:26.723 INFO:    Running CCI counting scan for source plate column 2...
+2023-11-28 23:50:42.041 INFO:    CCI counting scan complete.
+2023-11-28 23:50:42.050 INFO:    Well A2: density = 103.4 cells/μL, valid_area = 96%
+2023-11-28 23:50:42.054 INFO:    Well B2: density = 97.2 cells/μL, valid_area = 97%
+2023-11-28 23:50:42.060 INFO:    Well C2: density = 70.8 cells/μL, valid_area = 97%
+2023-11-28 23:50:42.064 INFO:    Well D2: density = 204.2 cells/μL, valid_area = 98%
+2023-11-28 23:50:42.071 INFO:    Well E2: density = 143.7 cells/μL, valid_area = 98%
+2023-11-28 23:50:42.076 INFO:    Well F2: density = 68.8 cells/μL, valid_area = 98%
+2023-11-28 23:50:42.081 INFO:    Well G2: density = 117.9 cells/μL, valid_area = 98%
+2023-11-28 23:50:42.085 INFO:    Well H2: density = 140.9 cells/μL, valid_area = 98%
+2023-11-28 23:50:42.159 INFO:    Plate 'stock_plate' well A2: target = 12.5k cells, aliquot = 120.9 μL
+2023-11-28 23:50:42.164 INFO:    Plate 'stock_plate' well B2: target = 12.5k cells, aliquot = 128.6 μL
+2023-11-28 23:50:42.170 INFO:    Plate 'stock_plate' well C2: target = 12.5k cells, aliquot = 176.7 μL
+2023-11-28 23:50:42.177 INFO:    Plate 'stock_plate' well D2: target = 12.5k cells, aliquot = 61.2 μL
+2023-11-28 23:50:42.181 INFO:    Plate 'stock_plate' well E2: target = 12.5k cells, aliquot = 87.0 μL
+2023-11-28 23:50:42.185 INFO:    Plate 'stock_plate' well F2: target = 12.5k cells, aliquot = 181.7 μL
+2023-11-28 23:50:42.189 INFO:    Plate 'stock_plate' well G2: target = 12.5k cells, aliquot = 106.1 μL
+2023-11-28 23:50:42.193 INFO:    Plate 'stock_plate' well H2: target = 12.5k cells, aliquot = 88.7 μL
+2023-11-28 23:50:56.437 INFO:    Flushing CCI with 1 x 200.0 μL of 'pbs'.
+2023-11-28 23:51:31.889 INFO:    Aliquoting 79.1 μL of 'media' and 120.9 μL from source well A2 to well A2 on plate 'stock_plate'.
+2023-11-28 23:51:46.977 INFO:    Mixing at source plate location 'A2', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-28 23:52:20.782 INFO:    Aliquoting 71.4 μL of 'media' and 128.6 μL from source well B2 to well B2 on plate 'stock_plate'.
+2023-11-28 23:52:33.370 INFO:    Mixing at source plate location 'B2', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-28 23:53:07.434 INFO:    Aliquoting 23.3 μL of 'media' and 176.7 μL from source well C2 to well C2 on plate 'stock_plate'.
+2023-11-28 23:53:19.055 INFO:    Mixing at source plate location 'C2', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-28 23:53:54.205 INFO:    Aliquoting 138.8 μL of 'media' and 61.2 μL from source well D2 to well D2 on plate 'stock_plate'.
+2023-11-28 23:54:08.368 INFO:    Mixing at source plate location 'D2', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-28 23:54:41.103 INFO:    Aliquoting 113.0 μL of 'media' and 87.0 μL from source well E2 to well E2 on plate 'stock_plate'.
+2023-11-28 23:54:54.770 INFO:    Mixing at source plate location 'E2', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-28 23:55:28.041 INFO:    Aliquoting 18.3 μL of 'media' and 181.7 μL from source well F2 to well F2 on plate 'stock_plate'.
+2023-11-28 23:55:39.704 INFO:    Mixing at source plate location 'F2', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-28 23:56:15.077 INFO:    Aliquoting 93.9 μL of 'media' and 106.1 μL from source well G2 to well G2 on plate 'stock_plate'.
+2023-11-28 23:56:28.470 INFO:    Mixing at source plate location 'G2', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-28 23:57:02.245 INFO:    Aliquoting 111.3 μL of 'media' and 88.7 μL from source well H2 to well H2 on plate 'stock_plate'.
+2023-11-28 23:57:15.878 INFO:    Mixing at source plate location 'H2', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-28 23:57:57.669 INFO:    Mixing at source plate location 'A3', 15 cycles for stage 'postquench', well vol 260.0 μL, plunger boost ON
+2023-11-28 23:57:59.147 DEBUG:   Enabling plunger boost for pipette '8ch', max speed 150.0, accel 1000.0
+2023-11-28 23:58:24.015 DEBUG:   Disabling plunger boost for pipette '8ch'
+2023-11-28 23:58:24.882 INFO:    Loading CCI from source column 3.
+2023-11-28 23:59:32.947 INFO:    Running CCI counting scan for source plate column 3...
+2023-11-29 00:00:48.646 INFO:    CCI counting scan complete.
+2023-11-29 00:00:48.651 INFO:    Well A3: density = 59.6 cells/μL, valid_area = 96%
+2023-11-29 00:00:48.654 INFO:    Well B3: density = 101.1 cells/μL, valid_area = 97%
+2023-11-29 00:00:48.663 INFO:    Well C3: density = 52.4 cells/μL, valid_area = 97%
+2023-11-29 00:00:48.666 INFO:    Well D3: density = 152.1 cells/μL, valid_area = 98%
+2023-11-29 00:00:48.670 INFO:    Well E3: density = 65.3 cells/μL, valid_area = 98%
+2023-11-29 00:00:48.673 INFO:    Well F3: density = 329.2 cells/μL, valid_area = 96%
+2023-11-29 00:00:48.676 INFO:    Well G3: density = 107.5 cells/μL, valid_area = 98%
+2023-11-29 00:00:48.680 INFO:    Well H3: density = 71.7 cells/μL, valid_area = 98%
+2023-11-29 00:00:48.737 WARNING: Plate 'stock_plate' well A3: seeding target (12.5k cells -> 209.6 μL) out of pipetting range - aliquoting max volume (200.0 μL)
+2023-11-29 00:00:48.743 INFO:    Plate 'stock_plate' well A3: target = 12.5k cells, aliquot = 200.0 μL
+2023-11-29 00:00:48.749 INFO:    Plate 'stock_plate' well B3: target = 12.5k cells, aliquot = 123.6 μL
+2023-11-29 00:00:48.753 WARNING: Plate 'stock_plate' well C3: seeding target (12.5k cells -> 238.5 μL) out of pipetting range - aliquoting max volume (200.0 μL)
+2023-11-29 00:00:48.760 INFO:    Plate 'stock_plate' well C3: target = 12.5k cells, aliquot = 200.0 μL
+2023-11-29 00:00:48.765 INFO:    Plate 'stock_plate' well D3: target = 12.5k cells, aliquot = 82.2 μL
+2023-11-29 00:00:48.773 INFO:    Plate 'stock_plate' well E3: target = 12.5k cells, aliquot = 191.3 μL
+2023-11-29 00:00:48.777 INFO:    Plate 'stock_plate' well F3: target is zero, will skip transfer
+2023-11-29 00:00:48.784 INFO:    Plate 'stock_plate' well G3: target = 12.5k cells, aliquot = 116.3 μL
+2023-11-29 00:00:48.788 INFO:    Plate 'stock_plate' well H3: target = 12.5k cells, aliquot = 174.2 μL
+2023-11-29 00:01:03.040 INFO:    Flushing CCI with 1 x 200.0 μL of 'pbs'.
+2023-11-29 00:01:38.642 INFO:    Aliquoting 200.0 μL from source well A3 to well A3 on plate 'stock_plate'.
+2023-11-29 00:01:47.401 INFO:    Mixing at source plate location 'A3', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-29 00:02:22.203 INFO:    Aliquoting 76.4 μL of 'media' and 123.6 μL from source well B3 to well B3 on plate 'stock_plate'.
+2023-11-29 00:02:34.874 INFO:    Mixing at source plate location 'B3', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-29 00:03:08.805 INFO:    Aliquoting 200.0 μL from source well C3 to well C3 on plate 'stock_plate'.
+2023-11-29 00:03:15.155 INFO:    Mixing at source plate location 'C3', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-29 00:03:50.179 INFO:    Aliquoting 117.8 μL of 'media' and 82.2 μL from source well D3 to well D3 on plate 'stock_plate'.
+2023-11-29 00:04:03.691 INFO:    Mixing at source plate location 'D3', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-29 00:04:36.747 INFO:    Aliquoting 8.7 μL of 'media' and 191.3 μL from source well E3 to well E3 on plate 'stock_plate'.
+2023-11-29 00:04:47.976 INFO:    Mixing at source plate location 'E3', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-29 00:05:23.408 INFO:    Not aliquoting from source well F3 to well F3 on plate 'stock_plate'.
+2023-11-29 00:05:23.417 INFO:    Aliquoting 83.7 μL of 'media' and 116.3 μL from source well G3 to well G3 on plate 'stock_plate'.
+2023-11-29 00:05:36.251 INFO:    Mixing at source plate location 'G3', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-29 00:06:10.103 INFO:    Aliquoting 25.8 μL of 'media' and 174.2 μL from source well H3 to well H3 on plate 'stock_plate'.
+2023-11-29 00:06:21.756 INFO:    Mixing at source plate location 'H3', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-29 00:06:56.911 INFO:    Setting tempdeck to 25.0 °C...
+2023-11-29 00:07:40.635 INFO:    Tempdeck reached setpoint.
+2023-11-29 00:07:49.243 INFO:    Mixing at source plate location 'A4', 15 cycles for stage 'postquench', well vol 260.0 μL, plunger boost ON
+2023-11-29 00:07:50.691 DEBUG:   Enabling plunger boost for pipette '8ch', max speed 150.0, accel 1000.0
+2023-11-29 00:08:15.463 DEBUG:   Disabling plunger boost for pipette '8ch'
+2023-11-29 00:08:16.341 INFO:    Loading CCI from source column 4.
+2023-11-29 00:09:24.375 INFO:    Running CCI counting scan for source plate column 4...
+2023-11-29 00:10:41.291 INFO:    CCI counting scan complete.
+2023-11-29 00:10:41.299 INFO:    Well A4: density = 107.3 cells/μL, valid_area = 96%
+2023-11-29 00:10:41.302 INFO:    Well B4: density = 147.1 cells/μL, valid_area = 97%
+2023-11-29 00:10:41.306 INFO:    Well C4: density = 159.8 cells/μL, valid_area = 97%
+2023-11-29 00:10:41.312 INFO:    Well D4: density = 83.2 cells/μL, valid_area = 98%
+2023-11-29 00:10:41.322 INFO:    Well E4: density = 160.7 cells/μL, valid_area = 98%
+2023-11-29 00:10:41.326 INFO:    Well F4: density = 103.9 cells/μL, valid_area = 98%
+2023-11-29 00:10:41.330 INFO:    Well G4: density = 211.1 cells/μL, valid_area = 98%
+2023-11-29 00:10:41.337 INFO:    Well H4: density = 164.4 cells/μL, valid_area = 98%
+2023-11-29 00:10:41.396 INFO:    Plate 'stock_plate' well A4: target = 12.5k cells, aliquot = 116.5 μL
+2023-11-29 00:10:41.409 INFO:    Plate 'stock_plate' well B4: target = 12.5k cells, aliquot = 85.0 μL
+2023-11-29 00:10:41.444 INFO:    Plate 'stock_plate' well C4: target = 12.5k cells, aliquot = 78.2 μL
+2023-11-29 00:10:41.454 INFO:    Plate 'stock_plate' well D4: target = 12.5k cells, aliquot = 150.2 μL
+2023-11-29 00:10:41.458 INFO:    Plate 'stock_plate' well E4: target = 12.5k cells, aliquot = 77.8 μL
+2023-11-29 00:10:41.467 INFO:    Plate 'stock_plate' well F4: target = 12.5k cells, aliquot = 120.4 μL
+2023-11-29 00:10:41.486 INFO:    Plate 'stock_plate' well G4: target = 12.5k cells, aliquot = 59.2 μL
+2023-11-29 00:10:41.495 INFO:    Plate 'stock_plate' well H4: target = 12.5k cells, aliquot = 76.1 μL
+2023-11-29 00:10:55.844 INFO:    Flushing CCI with 1 x 200.0 μL of 'pbs'.
+2023-11-29 00:11:31.407 INFO:    Aliquoting 83.5 μL of 'media' and 116.5 μL from source well A4 to well A4 on plate 'stock_plate'.
+2023-11-29 00:11:46.575 INFO:    Mixing at source plate location 'A4', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-29 00:12:20.288 INFO:    Aliquoting 115.0 μL of 'media' and 85.0 μL from source well B4 to well B4 on plate 'stock_plate'.
+2023-11-29 00:12:33.852 INFO:    Mixing at source plate location 'B4', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-29 00:13:06.881 INFO:    Aliquoting 121.8 μL of 'media' and 78.2 μL from source well C4 to well C4 on plate 'stock_plate'.
+2023-11-29 00:13:20.558 INFO:    Mixing at source plate location 'C4', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-29 00:13:53.428 INFO:    Aliquoting 49.8 μL of 'media' and 150.2 μL from source well D4 to well D4 on plate 'stock_plate'.
+2023-11-29 00:14:05.541 INFO:    Mixing at source plate location 'D4', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-29 00:14:39.995 INFO:    Aliquoting 122.2 μL of 'media' and 77.8 μL from source well E4 to well E4 on plate 'stock_plate'.
+2023-11-29 00:14:53.748 INFO:    Mixing at source plate location 'E4', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-29 00:15:26.716 INFO:    Aliquoting 79.6 μL of 'media' and 120.4 μL from source well F4 to well F4 on plate 'stock_plate'.
+2023-11-29 00:15:39.527 INFO:    Mixing at source plate location 'F4', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-29 00:16:13.481 INFO:    Aliquoting 140.8 μL of 'media' and 59.2 μL from source well G4 to well G4 on plate 'stock_plate'.
+2023-11-29 00:16:27.729 INFO:    Mixing at source plate location 'G4', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-29 00:17:00.430 INFO:    Aliquoting 123.9 μL of 'media' and 76.1 μL from source well H4 to well H4 on plate 'stock_plate'.
+2023-11-29 00:17:14.254 INFO:    Mixing at source plate location 'H4', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-29 00:17:55.685 INFO:    Mixing at source plate location 'A5', 15 cycles for stage 'postquench', well vol 260.0 μL, plunger boost ON
+2023-11-29 00:17:57.114 DEBUG:   Enabling plunger boost for pipette '8ch', max speed 150.0, accel 1000.0
+2023-11-29 00:18:22.164 DEBUG:   Disabling plunger boost for pipette '8ch'
+2023-11-29 00:18:23.048 INFO:    Loading CCI from source column 5.
+2023-11-29 00:19:31.079 INFO:    Running CCI counting scan for source plate column 5...
+2023-11-29 00:20:45.261 INFO:    CCI counting scan complete.
+2023-11-29 00:20:45.272 INFO:    Well A5: density = 58.3 cells/μL, valid_area = 96%
+2023-11-29 00:20:45.280 INFO:    Well B5: density = 64.4 cells/μL, valid_area = 97%
+2023-11-29 00:20:45.284 INFO:    Well C5: density = 82.5 cells/μL, valid_area = 97%
+2023-11-29 00:20:45.289 INFO:    Well D5: density = 71.5 cells/μL, valid_area = 98%
+2023-11-29 00:20:45.296 INFO:    Well E5: density = 56.2 cells/μL, valid_area = 98%
+2023-11-29 00:20:45.303 INFO:    Well F5: density = 80.5 cells/μL, valid_area = 98%
+2023-11-29 00:20:45.307 INFO:    Well G5: density = 112.7 cells/μL, valid_area = 98%
+2023-11-29 00:20:45.318 INFO:    Well H5: density = 83.5 cells/μL, valid_area = 98%
+2023-11-29 00:20:45.373 INFO:    Plate 'stock_plate' well A5: target is zero, will skip transfer
+2023-11-29 00:20:45.377 INFO:    Plate 'stock_plate' well B5: target is zero, will skip transfer
+2023-11-29 00:20:45.383 INFO:    Plate 'stock_plate' well C5: target is zero, will skip transfer
+2023-11-29 00:20:45.386 INFO:    Plate 'stock_plate' well D5: target is zero, will skip transfer
+2023-11-29 00:20:45.390 INFO:    Plate 'stock_plate' well E5: target is zero, will skip transfer
+2023-11-29 00:20:45.396 INFO:    Plate 'stock_plate' well F5: target is zero, will skip transfer
+2023-11-29 00:20:45.399 INFO:    Plate 'stock_plate' well G5: target is zero, will skip transfer
+2023-11-29 00:20:45.403 INFO:    Plate 'stock_plate' well H5: target is zero, will skip transfer
+2023-11-29 00:20:59.662 INFO:    Flushing CCI with 1 x 200.0 μL of 'pbs'.
+2023-11-29 00:21:35.281 INFO:    Not aliquoting from source well A5 to well A5 on plate 'stock_plate'.
+2023-11-29 00:21:35.291 INFO:    Not aliquoting from source well B5 to well B5 on plate 'stock_plate'.
+2023-11-29 00:21:35.301 INFO:    Not aliquoting from source well C5 to well C5 on plate 'stock_plate'.
+2023-11-29 00:21:35.314 INFO:    Not aliquoting from source well D5 to well D5 on plate 'stock_plate'.
+2023-11-29 00:21:35.325 INFO:    Not aliquoting from source well E5 to well E5 on plate 'stock_plate'.
+2023-11-29 00:21:35.332 INFO:    Not aliquoting from source well F5 to well F5 on plate 'stock_plate'.
+2023-11-29 00:21:35.340 INFO:    Not aliquoting from source well G5 to well G5 on plate 'stock_plate'.
+2023-11-29 00:21:35.347 INFO:    Not aliquoting from source well H5 to well H5 on plate 'stock_plate'.
+2023-11-29 00:21:41.401 INFO:    Mixing at source plate location 'A6', 15 cycles for stage 'postquench', well vol 260.0 μL, plunger boost ON
+2023-11-29 00:21:42.782 DEBUG:   Enabling plunger boost for pipette '8ch', max speed 150.0, accel 1000.0
+2023-11-29 00:22:07.752 DEBUG:   Disabling plunger boost for pipette '8ch'
+2023-11-29 00:22:08.603 INFO:    Loading CCI from source column 6.
+2023-11-29 00:23:16.623 INFO:    Running CCI counting scan for source plate column 6...
+2023-11-29 00:24:31.795 INFO:    CCI counting scan complete.
+2023-11-29 00:24:31.810 INFO:    Well A6: density = 108.7 cells/μL, valid_area = 96%
+2023-11-29 00:24:31.813 INFO:    Well B6: density = 124.8 cells/μL, valid_area = 97%
+2023-11-29 00:24:31.816 INFO:    Well C6: density = 49.8 cells/μL, valid_area = 97%
+2023-11-29 00:24:31.821 INFO:    Well D6: density = 49.4 cells/μL, valid_area = 98%
+2023-11-29 00:24:31.824 INFO:    Well E6: density = 156.8 cells/μL, valid_area = 98%
+2023-11-29 00:24:31.827 INFO:    Well F6: density = 159.7 cells/μL, valid_area = 98%
+2023-11-29 00:24:31.830 INFO:    Well G6: density = 63.5 cells/μL, valid_area = 98%
+2023-11-29 00:24:31.833 INFO:    Well H6: density = 181.3 cells/μL, valid_area = 98%
+2023-11-29 00:24:31.891 INFO:    Plate 'stock_plate' well A6: target = 12.5k cells, aliquot = 115.0 μL
+2023-11-29 00:24:31.897 INFO:    Plate 'stock_plate' well B6: target = 12.5k cells, aliquot = 100.2 μL
+2023-11-29 00:24:31.901 WARNING: Plate 'stock_plate' well C6: seeding target (12.5k cells -> 251.1 μL) out of pipetting range - aliquoting max volume (200.0 μL)
+2023-11-29 00:24:31.905 INFO:    Plate 'stock_plate' well C6: target = 12.5k cells, aliquot = 200.0 μL
+2023-11-29 00:24:31.908 WARNING: Plate 'stock_plate' well D6: seeding target (12.5k cells -> 253.0 μL) out of pipetting range - aliquoting max volume (200.0 μL)
+2023-11-29 00:24:31.911 INFO:    Plate 'stock_plate' well D6: target = 12.5k cells, aliquot = 200.0 μL
+2023-11-29 00:24:31.920 INFO:    Plate 'stock_plate' well E6: target = 12.5k cells, aliquot = 79.7 μL
+2023-11-29 00:24:31.924 INFO:    Plate 'stock_plate' well F6: target = 12.5k cells, aliquot = 78.3 μL
+2023-11-29 00:24:31.927 INFO:    Plate 'stock_plate' well G6: target = 12.5k cells, aliquot = 197.0 μL
+2023-11-29 00:24:31.933 INFO:    Plate 'stock_plate' well H6: target = 12.5k cells, aliquot = 68.9 μL
+2023-11-29 00:24:46.189 INFO:    Flushing CCI with 1 x 200.0 μL of 'pbs'.
+2023-11-29 00:25:21.614 INFO:    Aliquoting 85.0 μL of 'media' and 115.0 μL from source well A6 to well A6 on plate 'stock_plate'.
+2023-11-29 00:25:36.881 INFO:    Mixing at source plate location 'A6', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-29 00:26:10.565 INFO:    Aliquoting 99.8 μL of 'media' and 100.2 μL from source well B6 to well B6 on plate 'stock_plate'.
+2023-11-29 00:26:23.563 INFO:    Mixing at source plate location 'B6', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-29 00:26:56.838 INFO:    Aliquoting 200.0 μL from source well C6 to well C6 on plate 'stock_plate'.
+2023-11-29 00:27:03.135 INFO:    Mixing at source plate location 'C6', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-29 00:27:37.972 INFO:    Aliquoting 200.0 μL from source well D6 to well D6 on plate 'stock_plate'.
+2023-11-29 00:27:44.278 INFO:    Mixing at source plate location 'D6', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-29 00:28:19.291 INFO:    Aliquoting 120.3 μL of 'media' and 79.7 μL from source well E6 to well E6 on plate 'stock_plate'.
+2023-11-29 00:28:32.975 INFO:    Mixing at source plate location 'E6', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-29 00:29:05.972 INFO:    Aliquoting 121.7 μL of 'media' and 78.3 μL from source well F6 to well F6 on plate 'stock_plate'.
+2023-11-29 00:29:19.667 INFO:    Mixing at source plate location 'F6', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-29 00:29:52.654 INFO:    Aliquoting 3.0 μL of 'media' and 197.0 μL from source well G6 to well G6 on plate 'stock_plate'.
+2023-11-29 00:30:03.700 INFO:    Mixing at source plate location 'G6', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-29 00:30:39.198 INFO:    Aliquoting 131.1 μL of 'media' and 68.9 μL from source well H6 to well H6 on plate 'stock_plate'.
+2023-11-29 00:30:52.954 INFO:    Mixing at source plate location 'H6', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-29 00:31:34.281 INFO:    Mixing at source plate location 'A7', 15 cycles for stage 'postquench', well vol 260.0 μL, plunger boost ON
+2023-11-29 00:31:35.632 DEBUG:   Enabling plunger boost for pipette '8ch', max speed 150.0, accel 1000.0
+2023-11-29 00:32:00.543 DEBUG:   Disabling plunger boost for pipette '8ch'
+2023-11-29 00:32:01.407 INFO:    Loading CCI from source column 7.
+2023-11-29 00:33:09.435 INFO:    Running CCI counting scan for source plate column 7...
+2023-11-29 00:34:24.034 INFO:    CCI counting scan complete.
+2023-11-29 00:34:24.041 INFO:    Well A7: density = 119.3 cells/μL, valid_area = 96%
+2023-11-29 00:34:24.044 INFO:    Well B7: density = 82.8 cells/μL, valid_area = 97%
+2023-11-29 00:34:24.048 INFO:    Well C7: density = 171.6 cells/μL, valid_area = 97%
+2023-11-29 00:34:24.051 INFO:    Well D7: density = 149.5 cells/μL, valid_area = 98%
+2023-11-29 00:34:24.055 INFO:    Well E7: density = 94.1 cells/μL, valid_area = 98%
+2023-11-29 00:34:24.058 INFO:    Well F7: density = 87.0 cells/μL, valid_area = 98%
+2023-11-29 00:34:24.064 INFO:    Well G7: density = 119.2 cells/μL, valid_area = 98%
+2023-11-29 00:34:24.068 INFO:    Well H7: density = 60.0 cells/μL, valid_area = 98%
+2023-11-29 00:34:24.125 INFO:    Plate 'stock_plate' well A7: target = 12.5k cells, aliquot = 104.8 μL
+2023-11-29 00:34:24.134 INFO:    Plate 'stock_plate' well B7: target = 12.5k cells, aliquot = 151.0 μL
+2023-11-29 00:34:24.139 INFO:    Plate 'stock_plate' well C7: target is zero, will skip transfer
+2023-11-29 00:34:24.145 INFO:    Plate 'stock_plate' well D7: target = 12.5k cells, aliquot = 83.6 μL
+2023-11-29 00:34:24.152 INFO:    Plate 'stock_plate' well E7: target = 12.5k cells, aliquot = 132.9 μL
+2023-11-29 00:34:24.156 INFO:    Plate 'stock_plate' well F7: target = 12.5k cells, aliquot = 143.7 μL
+2023-11-29 00:34:24.160 INFO:    Plate 'stock_plate' well G7: target = 12.5k cells, aliquot = 104.9 μL
+2023-11-29 00:34:24.164 WARNING: Plate 'stock_plate' well H7: seeding target (12.5k cells -> 208.3 μL) out of pipetting range - aliquoting max volume (200.0 μL)
+2023-11-29 00:34:24.167 INFO:    Plate 'stock_plate' well H7: target = 12.5k cells, aliquot = 200.0 μL
+2023-11-29 00:34:38.438 INFO:    Flushing CCI with 1 x 200.0 μL of 'pbs'.
+2023-11-29 00:35:13.856 INFO:    Aliquoting 95.2 μL of 'media' and 104.8 μL from source well A7 to well A7 on plate 'stock_plate'.
+2023-11-29 00:35:29.140 INFO:    Mixing at source plate location 'A7', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-29 00:36:02.673 INFO:    Aliquoting 49.0 μL of 'media' and 151.0 μL from source well B7 to well B7 on plate 'stock_plate'.
+2023-11-29 00:36:14.724 INFO:    Mixing at source plate location 'B7', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-29 00:36:49.058 INFO:    Not aliquoting from source well C7 to well C7 on plate 'stock_plate'.
+2023-11-29 00:36:49.071 INFO:    Aliquoting 116.4 μL of 'media' and 83.6 μL from source well D7 to well D7 on plate 'stock_plate'.
+2023-11-29 00:37:02.574 INFO:    Mixing at source plate location 'D7', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-29 00:37:35.617 INFO:    Aliquoting 67.1 μL of 'media' and 132.9 μL from source well E7 to well E7 on plate 'stock_plate'.
+2023-11-29 00:37:47.971 INFO:    Mixing at source plate location 'E7', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-29 00:38:22.099 INFO:    Aliquoting 56.3 μL of 'media' and 143.7 μL from source well F7 to well F7 on plate 'stock_plate'.
+2023-11-29 00:38:34.244 INFO:    Mixing at source plate location 'F7', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-29 00:39:08.665 INFO:    Aliquoting 95.1 μL of 'media' and 104.9 μL from source well G7 to well G7 on plate 'stock_plate'.
+2023-11-29 00:39:21.778 INFO:    Mixing at source plate location 'G7', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-29 00:39:55.341 INFO:    Aliquoting 200.0 μL from source well H7 to well H7 on plate 'stock_plate'.
+2023-11-29 00:40:01.778 INFO:    Mixing at source plate location 'H7', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-29 00:40:45.123 INFO:    Mixing at source plate location 'A8', 15 cycles for stage 'postquench', well vol 260.0 μL, plunger boost ON
+2023-11-29 00:40:46.472 DEBUG:   Enabling plunger boost for pipette '8ch', max speed 150.0, accel 1000.0
+2023-11-29 00:41:11.387 DEBUG:   Disabling plunger boost for pipette '8ch'
+2023-11-29 00:41:12.235 INFO:    Loading CCI from source column 8.
+2023-11-29 00:42:20.249 INFO:    Running CCI counting scan for source plate column 8...
+2023-11-29 00:43:36.631 INFO:    CCI counting scan complete.
+2023-11-29 00:43:36.635 INFO:    Well A8: density = 201.4 cells/μL, valid_area = 96%
+2023-11-29 00:43:36.638 INFO:    Well B8: density = 155.0 cells/μL, valid_area = 97%
+2023-11-29 00:43:36.642 INFO:    Well C8: density = 114.0 cells/μL, valid_area = 97%
+2023-11-29 00:43:36.648 INFO:    Well D8: density = 107.9 cells/μL, valid_area = 98%
+2023-11-29 00:43:36.651 INFO:    Well E8: density = 133.3 cells/μL, valid_area = 98%
+2023-11-29 00:43:36.660 INFO:    Well F8: density = 179.2 cells/μL, valid_area = 98%
+2023-11-29 00:43:36.664 INFO:    Well G8: density = 124.3 cells/μL, valid_area = 98%
+2023-11-29 00:43:36.667 INFO:    Well H8: density = 127.8 cells/μL, valid_area = 98%
+2023-11-29 00:43:36.725 INFO:    Plate 'stock_plate' well A8: target = 12.5k cells, aliquot = 62.1 μL
+2023-11-29 00:43:36.732 INFO:    Plate 'stock_plate' well B8: target = 12.5k cells, aliquot = 80.6 μL
+2023-11-29 00:43:36.736 INFO:    Plate 'stock_plate' well C8: target = 12.5k cells, aliquot = 109.7 μL
+2023-11-29 00:43:36.740 INFO:    Plate 'stock_plate' well D8: target = 12.5k cells, aliquot = 115.8 μL
+2023-11-29 00:43:36.747 INFO:    Plate 'stock_plate' well E8: target = 12.5k cells, aliquot = 93.8 μL
+2023-11-29 00:43:36.751 INFO:    Plate 'stock_plate' well F8: target = 12.5k cells, aliquot = 69.8 μL
+2023-11-29 00:43:36.755 INFO:    Plate 'stock_plate' well G8: target = 12.5k cells, aliquot = 100.5 μL
+2023-11-29 00:43:36.762 INFO:    Plate 'stock_plate' well H8: target = 12.5k cells, aliquot = 97.8 μL
+2023-11-29 00:43:51.054 INFO:    Flushing CCI with 1 x 200.0 μL of 'pbs'.
+2023-11-29 00:44:26.388 INFO:    Aliquoting 137.9 μL of 'media' and 62.1 μL from source well A8 to well A8 on plate 'stock_plate'.
+2023-11-29 00:44:42.658 INFO:    Mixing at source plate location 'A8', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-29 00:45:16.996 INFO:    Aliquoting 119.4 μL of 'media' and 80.6 μL from source well B8 to well B8 on plate 'stock_plate'.
+2023-11-29 00:45:33.056 INFO:    Mixing at source plate location 'B8', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-29 00:46:05.904 INFO:    Aliquoting 90.3 μL of 'media' and 109.7 μL from source well C8 to well C8 on plate 'stock_plate'.
+2023-11-29 00:46:18.709 INFO:    Mixing at source plate location 'C8', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-29 00:46:52.153 INFO:    Aliquoting 84.2 μL of 'media' and 115.8 μL from source well D8 to well D8 on plate 'stock_plate'.
+2023-11-29 00:47:04.823 INFO:    Mixing at source plate location 'D8', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-29 00:47:38.464 INFO:    Aliquoting 106.2 μL of 'media' and 93.8 μL from source well E8 to well E8 on plate 'stock_plate'.
+2023-11-29 00:47:51.569 INFO:    Mixing at source plate location 'E8', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-29 00:48:24.921 INFO:    Aliquoting 130.2 μL of 'media' and 69.8 μL from source well F8 to well F8 on plate 'stock_plate'.
+2023-11-29 00:48:38.574 INFO:    Mixing at source plate location 'F8', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-29 00:49:11.255 INFO:    Aliquoting 99.5 μL of 'media' and 100.5 μL from source well G8 to well G8 on plate 'stock_plate'.
+2023-11-29 00:49:24.205 INFO:    Mixing at source plate location 'G8', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-29 00:49:57.592 INFO:    Aliquoting 102.2 μL of 'media' and 97.8 μL from source well H8 to well H8 on plate 'stock_plate'.
+2023-11-29 00:50:10.716 INFO:    Mixing at source plate location 'H8', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-29 00:50:52.849 INFO:    Mixing at source plate location 'A9', 15 cycles for stage 'postquench', well vol 260.0 μL, plunger boost ON
+2023-11-29 00:50:54.515 DEBUG:   Enabling plunger boost for pipette '8ch', max speed 150.0, accel 1000.0
+2023-11-29 00:51:19.571 DEBUG:   Disabling plunger boost for pipette '8ch'
+2023-11-29 00:51:20.426 INFO:    Loading CCI from source column 9.
+2023-11-29 00:52:28.410 INFO:    Running CCI counting scan for source plate column 9...
+2023-11-29 00:53:44.238 INFO:    CCI counting scan complete.
+2023-11-29 00:53:44.244 INFO:    Well A9: density = 79.5 cells/μL, valid_area = 96%
+2023-11-29 00:53:44.251 INFO:    Well B9: density = 348.3 cells/μL, valid_area = 95%
+2023-11-29 00:53:44.254 INFO:    Well C9: density = 83.9 cells/μL, valid_area = 97%
+2023-11-29 00:53:44.258 INFO:    Well D9: density = 53.3 cells/μL, valid_area = 98%
+2023-11-29 00:53:44.261 INFO:    Well E9: density = 135.9 cells/μL, valid_area = 98%
+2023-11-29 00:53:44.264 INFO:    Well F9: density = 41.5 cells/μL, valid_area = 98%
+2023-11-29 00:53:44.273 INFO:    Well G9: density = 133.4 cells/μL, valid_area = 98%
+2023-11-29 00:53:44.278 INFO:    Well H9: density = 74.4 cells/μL, valid_area = 98%
+2023-11-29 00:53:44.373 INFO:    Plate 'stock_plate' well A9: target = 12.5k cells, aliquot = 157.2 μL
+2023-11-29 00:53:44.385 INFO:    Plate 'stock_plate' well B9: target = 12.5k cells, aliquot = 35.9 μL
+2023-11-29 00:53:44.389 INFO:    Plate 'stock_plate' well C9: target = 12.5k cells, aliquot = 149.1 μL
+2023-11-29 00:53:44.407 WARNING: Plate 'stock_plate' well D9: seeding target (12.5k cells -> 234.5 μL) out of pipetting range - aliquoting max volume (200.0 μL)
+2023-11-29 00:53:44.412 INFO:    Plate 'stock_plate' well D9: target = 12.5k cells, aliquot = 200.0 μL
+2023-11-29 00:53:44.417 INFO:    Plate 'stock_plate' well E9: target = 12.5k cells, aliquot = 92.0 μL
+2023-11-29 00:53:44.422 WARNING: Plate 'stock_plate' well F9: seeding target (12.5k cells -> 300.9 μL) out of pipetting range - aliquoting max volume (200.0 μL)
+2023-11-29 00:53:44.428 INFO:    Plate 'stock_plate' well F9: target = 12.5k cells, aliquot = 200.0 μL
+2023-11-29 00:53:44.437 INFO:    Plate 'stock_plate' well G9: target = 12.5k cells, aliquot = 93.7 μL
+2023-11-29 00:53:44.441 INFO:    Plate 'stock_plate' well H9: target = 12.5k cells, aliquot = 168.1 μL
+2023-11-29 00:53:58.692 INFO:    Flushing CCI with 1 x 200.0 μL of 'pbs'.
+2023-11-29 00:54:34.250 INFO:    Aliquoting 42.8 μL of 'media' and 157.2 μL from source well A9 to well A9 on plate 'stock_plate'.
+2023-11-29 00:54:48.136 INFO:    Mixing at source plate location 'A9', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-29 00:55:22.573 INFO:    Aliquoting 164.1 μL of 'media' and 35.9 μL from source well B9 to well B9 on plate 'stock_plate'.
+2023-11-29 00:55:36.898 INFO:    Mixing at source plate location 'B9', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-29 00:56:08.806 INFO:    Aliquoting 50.9 μL of 'media' and 149.1 μL from source well C9 to well C9 on plate 'stock_plate'.
+2023-11-29 00:56:20.795 INFO:    Mixing at source plate location 'C9', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-29 00:56:55.173 INFO:    Aliquoting 200.0 μL from source well D9 to well D9 on plate 'stock_plate'.
+2023-11-29 00:57:01.494 INFO:    Mixing at source plate location 'D9', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-29 00:57:36.449 INFO:    Aliquoting 108.0 μL of 'media' and 92.0 μL from source well E9 to well E9 on plate 'stock_plate'.
+2023-11-29 00:57:49.615 INFO:    Mixing at source plate location 'E9', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-29 00:58:22.694 INFO:    Aliquoting 200.0 μL from source well F9 to well F9 on plate 'stock_plate'.
+2023-11-29 00:58:29.085 INFO:    Mixing at source plate location 'F9', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-29 00:59:04.178 INFO:    Aliquoting 106.3 μL of 'media' and 93.7 μL from source well G9 to well G9 on plate 'stock_plate'.
+2023-11-29 00:59:17.345 INFO:    Mixing at source plate location 'G9', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-29 00:59:50.566 INFO:    Aliquoting 31.9 μL of 'media' and 168.1 μL from source well H9 to well H9 on plate 'stock_plate'.
+2023-11-29 01:00:02.096 INFO:    Mixing at source plate location 'H9', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-29 01:00:45.440 INFO:    Mixing at source plate location 'A10', 15 cycles for stage 'postquench', well vol 260.0 μL, plunger boost ON
+2023-11-29 01:00:47.091 DEBUG:   Enabling plunger boost for pipette '8ch', max speed 150.0, accel 1000.0
+2023-11-29 01:01:12.117 DEBUG:   Disabling plunger boost for pipette '8ch'
+2023-11-29 01:01:12.973 INFO:    Loading CCI from source column 10.
+2023-11-29 01:02:21.018 INFO:    Running CCI counting scan for source plate column 10...
+2023-11-29 01:03:36.596 INFO:    CCI counting scan complete.
+2023-11-29 01:03:36.606 INFO:    Well A10: density = 168.3 cells/μL, valid_area = 96%
+2023-11-29 01:03:36.613 INFO:    Well B10: density = 61.7 cells/μL, valid_area = 97%
+2023-11-29 01:03:36.616 INFO:    Well C10: density = 81.2 cells/μL, valid_area = 97%
+2023-11-29 01:03:36.620 INFO:    Well D10: density = 63.7 cells/μL, valid_area = 98%
+2023-11-29 01:03:36.624 INFO:    Well E10: density = 151.6 cells/μL, valid_area = 98%
+2023-11-29 01:03:36.627 INFO:    Well F10: density = 138.9 cells/μL, valid_area = 98%
+2023-11-29 01:03:36.631 INFO:    Well G10: density = 167.1 cells/μL, valid_area = 98%
+2023-11-29 01:03:36.634 INFO:    Well H10: density = 260.9 cells/μL, valid_area = 97%
+2023-11-29 01:03:36.694 INFO:    Plate 'stock_plate' well A10: target is zero, will skip transfer
+2023-11-29 01:03:36.701 INFO:    Plate 'stock_plate' well B10: target is zero, will skip transfer
+2023-11-29 01:03:36.705 INFO:    Plate 'stock_plate' well C10: target is zero, will skip transfer
+2023-11-29 01:03:36.712 INFO:    Plate 'stock_plate' well D10: target is zero, will skip transfer
+2023-11-29 01:03:36.716 INFO:    Plate 'stock_plate' well E10: target is zero, will skip transfer
+2023-11-29 01:03:36.721 INFO:    Plate 'stock_plate' well F10: target is zero, will skip transfer
+2023-11-29 01:03:36.730 INFO:    Plate 'stock_plate' well G10: target is zero, will skip transfer
+2023-11-29 01:03:36.734 INFO:    Plate 'stock_plate' well H10: target is zero, will skip transfer
+2023-11-29 01:03:50.999 INFO:    Flushing CCI with 1 x 200.0 μL of 'pbs'.
+2023-11-29 01:04:26.378 INFO:    Not aliquoting from source well A10 to well A10 on plate 'stock_plate'.
+2023-11-29 01:04:26.389 INFO:    Not aliquoting from source well B10 to well B10 on plate 'stock_plate'.
+2023-11-29 01:04:26.397 INFO:    Not aliquoting from source well C10 to well C10 on plate 'stock_plate'.
+2023-11-29 01:04:26.410 INFO:    Not aliquoting from source well D10 to well D10 on plate 'stock_plate'.
+2023-11-29 01:04:26.418 INFO:    Not aliquoting from source well E10 to well E10 on plate 'stock_plate'.
+2023-11-29 01:04:26.440 INFO:    Not aliquoting from source well F10 to well F10 on plate 'stock_plate'.
+2023-11-29 01:04:26.450 INFO:    Not aliquoting from source well G10 to well G10 on plate 'stock_plate'.
+2023-11-29 01:04:26.466 INFO:    Not aliquoting from source well H10 to well H10 on plate 'stock_plate'.
+2023-11-29 01:04:32.338 INFO:    Mixing at source plate location 'A11', 15 cycles for stage 'postquench', well vol 260.0 μL, plunger boost ON
+2023-11-29 01:04:33.968 DEBUG:   Enabling plunger boost for pipette '8ch', max speed 150.0, accel 1000.0
+2023-11-29 01:04:58.857 DEBUG:   Disabling plunger boost for pipette '8ch'
+2023-11-29 01:04:59.716 INFO:    Loading CCI from source column 11.
+2023-11-29 01:06:07.722 INFO:    Running CCI counting scan for source plate column 11...
+2023-11-29 01:07:23.223 INFO:    CCI counting scan complete.
+2023-11-29 01:07:23.230 INFO:    Well A11: density = 214.7 cells/μL, valid_area = 96%
+2023-11-29 01:07:23.233 INFO:    Well B11: density = 64.4 cells/μL, valid_area = 97%
+2023-11-29 01:07:23.236 INFO:    Well C11: density = 183.4 cells/μL, valid_area = 97%
+2023-11-29 01:07:23.240 INFO:    Well D11: density = 179.4 cells/μL, valid_area = 98%
+2023-11-29 01:07:23.243 INFO:    Well E11: density = 92.8 cells/μL, valid_area = 98%
+2023-11-29 01:07:23.246 INFO:    Well F11: density = 132.4 cells/μL, valid_area = 98%
+2023-11-29 01:07:23.250 INFO:    Well G11: density = 101.0 cells/μL, valid_area = 98%
+2023-11-29 01:07:23.253 INFO:    Well H11: density = 109.6 cells/μL, valid_area = 98%
+2023-11-29 01:07:23.310 INFO:    Plate 'stock_plate' well A11: target = 12.5k cells, aliquot = 58.2 μL
+2023-11-29 01:07:23.314 INFO:    Plate 'stock_plate' well B11: target = 12.5k cells, aliquot = 194.2 μL
+2023-11-29 01:07:23.317 INFO:    Plate 'stock_plate' well C11: target = 12.5k cells, aliquot = 68.1 μL
+2023-11-29 01:07:23.328 INFO:    Plate 'stock_plate' well D11: target = 12.5k cells, aliquot = 69.7 μL
+2023-11-29 01:07:23.336 INFO:    Plate 'stock_plate' well E11: target = 12.5k cells, aliquot = 134.7 μL
+2023-11-29 01:07:23.340 INFO:    Plate 'stock_plate' well F11: target = 12.5k cells, aliquot = 94.4 μL
+2023-11-29 01:07:23.347 INFO:    Plate 'stock_plate' well G11: target = 12.5k cells, aliquot = 123.7 μL
+2023-11-29 01:07:23.350 INFO:    Plate 'stock_plate' well H11: target = 12.5k cells, aliquot = 114.1 μL
+2023-11-29 01:07:37.610 INFO:    Flushing CCI with 1 x 200.0 μL of 'pbs'.
+2023-11-29 01:08:12.908 INFO:    Aliquoting 141.8 μL of 'media' and 58.2 μL from source well A11 to well A11 on plate 'stock_plate'.
+2023-11-29 01:08:29.024 INFO:    Mixing at source plate location 'A11', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-29 01:09:01.339 INFO:    Aliquoting 5.8 μL of 'media' and 194.2 μL from source well B11 to well B11 on plate 'stock_plate'.
+2023-11-29 01:09:12.044 INFO:    Mixing at source plate location 'B11', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-29 01:09:47.212 INFO:    Aliquoting 131.9 μL of 'media' and 68.1 μL from source well C11 to well C11 on plate 'stock_plate'.
+2023-11-29 01:10:00.757 INFO:    Mixing at source plate location 'C11', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-29 01:10:33.313 INFO:    Aliquoting 130.3 μL of 'media' and 69.7 μL from source well D11 to well D11 on plate 'stock_plate'.
+2023-11-29 01:10:46.856 INFO:    Mixing at source plate location 'D11', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-29 01:11:19.437 INFO:    Aliquoting 65.3 μL of 'media' and 134.7 μL from source well E11 to well E11 on plate 'stock_plate'.
+2023-11-29 01:11:31.608 INFO:    Mixing at source plate location 'E11', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-29 01:12:05.572 INFO:    Aliquoting 105.6 μL of 'media' and 94.4 μL from source well F11 to well F11 on plate 'stock_plate'.
+2023-11-29 01:12:18.644 INFO:    Mixing at source plate location 'F11', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-29 01:12:51.875 INFO:    Aliquoting 76.3 μL of 'media' and 123.7 μL from source well G11 to well G11 on plate 'stock_plate'.
+2023-11-29 01:13:04.393 INFO:    Mixing at source plate location 'G11', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-29 01:13:38.977 INFO:    Aliquoting 85.9 μL of 'media' and 114.1 μL from source well H11 to well H11 on plate 'stock_plate'.
+2023-11-29 01:13:51.585 INFO:    Mixing at source plate location 'H11', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-29 01:14:33.609 INFO:    Mixing at source plate location 'A12', 15 cycles for stage 'postquench', well vol 260.0 μL, plunger boost ON
+2023-11-29 01:14:35.206 DEBUG:   Enabling plunger boost for pipette '8ch', max speed 150.0, accel 1000.0
+2023-11-29 01:15:00.090 DEBUG:   Disabling plunger boost for pipette '8ch'
+2023-11-29 01:15:00.941 INFO:    Loading CCI from source column 12.
+2023-11-29 01:16:08.939 INFO:    Running CCI counting scan for source plate column 12...
+2023-11-29 01:17:26.327 INFO:    CCI counting scan complete.
+2023-11-29 01:17:26.334 INFO:    Well A12: density = 124.6 cells/μL, valid_area = 96%
+2023-11-29 01:17:26.337 INFO:    Well B12: density = 82.8 cells/μL, valid_area = 97%
+2023-11-29 01:17:26.343 INFO:    Well C12: density = 220.1 cells/μL, valid_area = 97%
+2023-11-29 01:17:26.347 INFO:    Well D12: density = 199.0 cells/μL, valid_area = 98%
+2023-11-29 01:17:26.350 INFO:    Well E12: density = 154.2 cells/μL, valid_area = 98%
+2023-11-29 01:17:26.354 INFO:    Well F12: density = 238.9 cells/μL, valid_area = 98%
+2023-11-29 01:17:26.360 INFO:    Well G12: density = 217.6 cells/μL, valid_area = 98%
+2023-11-29 01:17:26.363 INFO:    Well H12: density = 215.2 cells/μL, valid_area = 98%
+2023-11-29 01:17:26.423 INFO:    Plate 'stock_plate' well A12: target = 12.5k cells, aliquot = 100.3 μL
+2023-11-29 01:17:26.431 INFO:    Plate 'stock_plate' well B12: target = 12.5k cells, aliquot = 151.0 μL
+2023-11-29 01:17:26.436 INFO:    Plate 'stock_plate' well C12: target = 12.5k cells, aliquot = 56.8 μL
+2023-11-29 01:17:26.439 INFO:    Plate 'stock_plate' well D12: target = 12.5k cells, aliquot = 62.8 μL
+2023-11-29 01:17:26.446 INFO:    Plate 'stock_plate' well E12: target = 12.5k cells, aliquot = 81.1 μL
+2023-11-29 01:17:26.453 INFO:    Plate 'stock_plate' well F12: target = 12.5k cells, aliquot = 52.3 μL
+2023-11-29 01:17:26.456 INFO:    Plate 'stock_plate' well G12: target = 12.5k cells, aliquot = 57.4 μL
+2023-11-29 01:17:26.460 INFO:    Plate 'stock_plate' well H12: target = 12.5k cells, aliquot = 58.1 μL
+2023-11-29 01:17:40.728 INFO:    Flushing CCI with 1 x 200.0 μL of 'pbs'.
+2023-11-29 01:18:16.020 INFO:    Aliquoting 99.7 μL of 'media' and 100.3 μL from source well A12 to well A12 on plate 'stock_plate'.
+2023-11-29 01:18:31.075 INFO:    Mixing at source plate location 'A12', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-29 01:19:04.237 INFO:    Aliquoting 49.0 μL of 'media' and 151.0 μL from source well B12 to well B12 on plate 'stock_plate'.
+2023-11-29 01:19:15.931 INFO:    Mixing at source plate location 'B12', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-29 01:19:50.264 INFO:    Aliquoting 143.2 μL of 'media' and 56.8 μL from source well C12 to well C12 on plate 'stock_plate'.
+2023-11-29 01:20:04.163 INFO:    Mixing at source plate location 'C12', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-29 01:20:36.467 INFO:    Aliquoting 137.2 μL of 'media' and 62.8 μL from source well D12 to well D12 on plate 'stock_plate'.
+2023-11-29 01:20:50.213 INFO:    Mixing at source plate location 'D12', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-29 01:21:22.626 INFO:    Aliquoting 118.9 μL of 'media' and 81.1 μL from source well E12 to well E12 on plate 'stock_plate'.
+2023-11-29 01:21:35.989 INFO:    Mixing at source plate location 'E12', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-29 01:22:08.823 INFO:    Aliquoting 147.7 μL of 'media' and 52.3 μL from source well F12 to well F12 on plate 'stock_plate'.
+2023-11-29 01:22:22.849 INFO:    Mixing at source plate location 'F12', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-29 01:22:55.022 INFO:    Aliquoting 142.6 μL of 'media' and 57.4 μL from source well G12 to well G12 on plate 'stock_plate'.
+2023-11-29 01:23:08.774 INFO:    Mixing at source plate location 'G12', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-29 01:23:41.091 INFO:    Aliquoting 141.9 μL of 'media' and 58.1 μL from source well H12 to well H12 on plate 'stock_plate'.
+2023-11-29 01:23:54.834 INFO:    Mixing at source plate location 'H12', 4 cycles for stage 'pretransfer', well vol 230.0 μL
+2023-11-29 01:24:27.195 INFO:    Flushing CCI with 1 x 200.0 μL of 'detergent' with 60.0 s dwell.
+2023-11-29 01:26:05.122 INFO:    Flushing CCI with 3 x 200.0 μL of 'water'.
+2023-11-29 01:27:16.989 INFO:    Setting tempdeck to 25.0 °C...
+2023-11-29 01:27:17.455 INFO:    Tempdeck reached setpoint.
+2023-11-29 01:27:17.459 INFO:    Deactivating tempdeck.
+2023-11-29 01:27:17.652 NOTICE:  Protocol complete.

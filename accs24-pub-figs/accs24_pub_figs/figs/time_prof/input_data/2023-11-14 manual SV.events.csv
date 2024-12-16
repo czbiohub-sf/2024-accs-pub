@@ -1,0 +1,53 @@
+stop,start,timestamp,desc
+,,,2023-11-14 manual split by SV; CPL: Manual crazyplate passaging 2023-11-02
+,setup_labware,1699997573858,Loading worktop: first labware touch (START)
+,,1699997664211,Loading worktop: last item down
+setup_labware,annotation,1699997678265,Transit: Touch incubator to open
+,,1699997702111,Annotation: Plate touches microscope
+,,1699998541576,Annotation: Plate leaves microscope
+,,1699998550664,switching lid
+,,1699998557266,note: 3 groups this time
+,,1699998580110,Transit: Incubator shut
+annotation,arraying,1699998596279,Arraying: First box or pipette touch
+,,1699999045340,really loud noise going on from equipment movers
+,,1699999070005,Arraying: Final box or pipette touch
+,,1699999072574,Arraying: Final box or pipette touch
+,,1699999717506,Arraying: Final box or pipette touch
+,,1699999719525,Arraying: Final box or pipette touch
+,,1699999722140,Trough fills: First container or labware touch
+,,1699999723837,Arraying: Final box or pipette touch
+arraying,setup_reagents,1699999749068,Trough fills: First container or labware touch
+,,1699999888497,Trough fills: Final touch & departing
+,,1699999891591,Trough fills: Final touch & departing
+,,1699999905285,Trough fills: Final touch & departing
+setup_reagents,wash,1699999920757,Transit: Touch incubator to open
+,,1699999941550,Media removal: Plate touches worktop
+,,1699999973282,Media removal: Pipette touches 1st tips
+,,1700000105540,Media removal: Last tips ejected
+,,1700000106881,PBS wash: First tips picked up
+,,1700000121983,note: late marking last 2 evts
+,,1700000246312,PBS wash: Last tips ejected
+wash,trypsinize,1700000267089,PBS wash: Last tips ejected
+,,1700000289238,Trypsinization: First tips picked up
+,,1700000326583,Trypsinization: Last tips ejected
+,,1700000329770,Trypsinization: Lid on and departing
+,,1700000339414,Transit: Incubator shut (then WAIT)
+trypsinize,setup_labware,1700000345675,Transit: Incubator shut (then WAIT)
+,,1700000367580,tidying
+,,1700000389954,tidying end
+,,1700000403581,tidying end
+setup_labware,quench,1700000582316,Transit: Touch incubator to open
+,,1700000603963,Quench: Plate touches worktop
+,,1700000613763,Quench: Pipette touches 1st tips
+,,1700000798510,Quench: Last tips ejected
+,,1700000806807,aliquoting more media to trough
+quench,seeding,1700000867407,Transfer: Pipette touches 1st tips
+,,1700000884636,for each group: media then cells
+,,1700001688908,Transfer: Last tips ejected
+,,1700001692743,Transfer: Last tips ejected
+seeding,inspection,1700001701380,Transfer: Lid on and departing
+,,1700001718874,Inspection: Plate touches microscope
+inspection,cleanup_plate,1700001835432,Inspection: Plate leaves microscope
+,,1700001866751,Transfer: Incubator shut
+cleanup_plate,cleanup_bsc,1700001892727,Cleanup: First touch
+cleanup_bsc,,1700002333376,Cleanup: BSC shut & lamp on (FINISH)

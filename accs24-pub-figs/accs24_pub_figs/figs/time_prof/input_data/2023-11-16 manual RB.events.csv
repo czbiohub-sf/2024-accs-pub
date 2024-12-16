@@ -1,0 +1,46 @@
+stop,start,timestamp,desc
+,,,Manual passaging by RB on 2023-11-16; CPL: Manual crazyplate passaging 2023-11-02
+,setup_labware,1700172086397,Loading worktop: first labware touch (START)
+,,1700172167129,Loading worktop: last item down
+setup_labware,annotation,1700172186780,Transit: Touch incubator to open
+,,1700172207204,Annotation: Plate touches microscope
+,,1700173296719,Annotation: Plate leaves microscope
+,,1700173309204,note: 3 groups
+,,1700173351017,Transit: Incubator shut
+annotation,arraying,1700173369870,Arraying: First box or pipette touch
+,,1700173374365,Arraying: First box or pipette touch
+,,1700174796348,Arraying: Final box or pipette touch
+,,1700174798263,Arraying: Final box or pipette touch
+arraying,setup_reagents,1700174808263,(ts updated per note below) Trough fills: First container or labware touch
+,,1700174972216,note: trough fills started ~10s after arraying end
+,,1700175019516,Trough fills: Final touch & departing
+setup_reagents,pause,1700175034026,getting a bucket for tip waste
+pause,wash,1700175067573,Transit: Touch incubator to open
+,,1700175089832,Media removal: Plate touches worktop
+,,1700175160241,Media removal: Pipette touches 1st tips
+,,1700175208410,grabbing another tip box
+,,1700175353862,Media removal: Last tips ejected
+,,1700175362588,Media removal: Last tips ejected
+,,1700175375244,grabbing more tips
+,,1700175444169,PBS wash: First tips picked up
+wash,trypsinize,1700175605879,PBS wash: Last tips ejected
+,,1700175631537,Trypsinization: First tips picked up
+,,1700175677216,Trypsinization: Last tips ejected
+,,1700175680789,Trypsinization: Lid on and departing
+trypsinize,setup_labware,1700175701572,Transit: Incubator shut (then WAIT)
+,,1700175716568,tidying
+,,1700175786895,tidying done
+,,1700175894722,tidying done
+setup_labware,quench,1700176021752,Transit: Touch incubator to open
+,,1700176044672,Quench: Plate touches worktop
+,,1700176080544,Quench: Pipette touches 1st tips
+,,1700176210767,Quench: Last tips ejected
+,,1700176294745,Quench: Last tips ejected
+quench,seeding,1700176337665,Transfer: Pipette touches 1st tips
+,,1700177400649,Transfer: Last tips ejected
+seeding,inspection,1700177403872,Transfer: Lid on and departing
+inspection,cleanup_plate,1700177542315,Inspection: Plate leaves microscope
+,,1700177562937,Transfer: Incubator shut
+cleanup_plate,cleanup_bsc,1700177580828,Cleanup: First touch
+,,1700177689307,note: inspection started ~10s after lid on
+cleanup_bsc,,1700177891899,Cleanup: BSC shut & lamp on (FINISH)
