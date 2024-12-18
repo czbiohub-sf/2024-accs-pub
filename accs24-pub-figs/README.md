@@ -42,6 +42,6 @@ python generate_all.py
 ```
 
 ## License
-The software code in this directory is released under the 3-Clause BSD license -- see BSD-3-Clause.txt
+The software code in this directory is released under the 3-Clause BSD license -- see `BSD-3-Clause.txt`.
 
 The bundled experimental data is released under the [Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International license](https://creativecommons.org/licenses/by-nc-nd/4.0/).
