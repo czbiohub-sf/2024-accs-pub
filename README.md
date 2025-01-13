@@ -1,13 +1,13 @@
 
 # Automated Cell Culture Splitter
-This repository accompanies the 2024 article "Open-source cell culture automation system with integrated cell counting for passaging microplate cultures". It contains the code and original data used to produce the quantitative figures for the article, as referenced in the data availability statement, and also serves as a hub for links to other resources for reproducing the Automated Cell Culture Splitter.
+This repository accompanies the 2024 article ["Open-source cell culture automation system with integrated cell counting for passaging microplate cultures"](https://doi.org/10.1101/2024.12.27.629034). It contains the code and original data used to produce the quantitative figures for the article, as referenced in the data availability statement, and also serves as a hub for links to other resources for reproducing the Automated Cell Culture Splitter.
 
 ## What is this?
 The Automated Cell Culture Splitter (ACCS) is a system that does automated splitting of cells in 96-well plates using an Opentrons OT-2 pipetting robot and a custom cell counting instrument. The design and software are open-source. Check out the preprint for more context.
 
 ## Links
 ### Manuscript
-- [Preprint](TODO)**\[TODO\]** on bioRxiv
+- [Preprint](https://www.biorxiv.org/content/10.1101/2024.12.27.629034v1) on bioRxiv
 
 ### System documentation
 
