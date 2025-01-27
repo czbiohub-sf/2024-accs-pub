@@ -11,7 +11,7 @@ The Automated Cell Culture Splitter (ACCS) is a system that does automated split
 
 ### System documentation
 
-- [Manuals](https://drive.google.com/drive/folders/1MgdO0HoPbRsYp-P-zQJTYHPDtVA4qac9?usp=drive_link) for building ACCS and the Cell Counting Imager (Google Drive)
+- Manuals for building ACCS and the Cell Counting Imager: (see below)
 - [CAD models](https://cad.onshape.com/documents/f7aeac8a6b627cec67d3facc) for the Cell Counting Imager and CCI flow cell (OnShape)
 
 ### Software repos
@@ -22,8 +22,10 @@ The Automated Cell Culture Splitter (ACCS) is a system that does automated split
 
 ## Contents of this repository
 
-- Directory `accs23_pub_figs/`:  
+- Directory `accs23-pub-figs/`:  
   Source code and raw data to reproduce the manuscript figures. Refer to `accs23_pub_figs/README.md` for details.
+- Directory `accs23-pub-supplements/`:  
+  Supplements published with the manuscript, in PDF form.
 
 ## Maintainers
 
