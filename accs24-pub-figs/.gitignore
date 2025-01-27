@@ -7,3 +7,4 @@ __pycache__
 /accs23_pub_figs/figs/zstack_gallery/input_data/PML*/raw_data/*.tif
 /accs23_pub_figs/figs/*/cache/*.tif
 /accs23_pub_figs/figs/*/cache/*.pickle
+accs24_pub_figs/fonts/*.ttf
