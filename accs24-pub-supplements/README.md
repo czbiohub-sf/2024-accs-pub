@@ -13,3 +13,8 @@
 
 - Supp. D. Example SOP for “CCI Normalization” protocol (PDF document)  
   `ACCS Example SOP.pdf`
+
+## License
+
+This content is released under the [Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International license](https://creativecommons.org/licenses/by-nc-nd/4.0/).
+
