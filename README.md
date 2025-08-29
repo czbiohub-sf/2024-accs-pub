@@ -1,4 +1,3 @@
-
 # Automated Cell Culture Splitter
 This repository accompanies the 2024 article ["Open-source cell culture automation system with integrated cell counting for passaging microplate cultures"](https://doi.org/10.1101/2024.12.27.629034). It contains the code and original data used to produce the quantitative figures for the article, as referenced in the data availability statement, and also serves as a hub for links to other resources for reproducing the Automated Cell Culture Splitter.
 
@@ -7,11 +6,11 @@ The Automated Cell Culture Splitter (ACCS) is a system that does automated split
 
 ## Links
 ### Manuscript
-- [Preprint](https://www.biorxiv.org/content/10.1101/2024.12.27.629034v1) on bioRxiv
+- [Preprint](https://www.biorxiv.org/content/10.1101/2024.12.27.629034v2) on bioRxiv
 
 ### System documentation
 
-- Manuals for building ACCS and the Cell Counting Imager: (see below)
+- Manuals for building ACCS and the Cell Counting Imager: (see `accs24-pub-supplements/`)
 - [CAD models](https://cad.onshape.com/documents/f7aeac8a6b627cec67d3facc) for the Cell Counting Imager and CCI flow cell (OnShape)
 
 ### Software repos
@@ -22,9 +21,9 @@ The Automated Cell Culture Splitter (ACCS) is a system that does automated split
 
 ## Contents of this repository
 
-- Directory `accs23-pub-figs/`:  
+- Directory `accs24-pub-figs/`:  
   Source code and raw data to reproduce the manuscript figures. Refer to `accs23_pub_figs/README.md` for details.
-- Directory `accs23-pub-supplements/`:  
+- Directory `accs24-pub-supplements/`:  
   Supplements published with the manuscript, in PDF form.
 
 ## Maintainers
