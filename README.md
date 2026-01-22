@@ -28,4 +28,4 @@ The Automated Cell Culture Splitter (ACCS) is a system that does automated split
 
 ## Maintainers
 
-The current maintainer of this repository is Greg Courville ([:email:](mailto:greg.courville@czbiohub.org)) of the Bioengineering platform at Chan Zuckerberg Biohub San Francisco.
+The current maintainer of this repository is [greg.courville@biohub.org](mailto:greg.courville@biohub.org)
